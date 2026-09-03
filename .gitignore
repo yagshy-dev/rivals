@@ -1,0 +1,23 @@
+# Backend (Maven/Java)
+backend/target/
+*.class
+*.jar
+
+# Frontend (Node/Vite)
+frontend/node_modules/
+frontend/dist/
+*.log
+
+# Local runtime data
+uploads/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*

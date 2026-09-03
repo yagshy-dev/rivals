@@ -1,0 +1,10 @@
+[
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "submitterDisplayName": "Uma User",
+    "activityType": "RUNNING",
+    "metricValue": 5,
+    "screenshotUrl": "/api/activities/44444444-4444-4444-4444-444444444444/screenshot",
+    "submittedAt": "2026-09-01T09:00:00Z"
+  }
+]
