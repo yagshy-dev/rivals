@@ -7,6 +7,8 @@ import { SubmitActivity } from "./pages/SubmitActivity";
 import { MySubmissions } from "./pages/MySubmissions";
 import { AdminReviewQueue } from "./pages/AdminReviewQueue";
 import { Squads } from "./pages/Squads";
+import { SquadDetail } from "./pages/SquadDetail";
+import { Invitations } from "./pages/Invitations";
 import { Leaderboards } from "./pages/Leaderboards";
 
 export function App() {
@@ -22,6 +24,8 @@ export function App() {
               <Route path="/submit" element={<SubmitActivity />} />
               <Route path="/my-submissions" element={<MySubmissions />} />
               <Route path="/squads" element={<Squads />} />
+              <Route path="/squads/:id" element={<SquadDetail />} />
+              <Route path="/invitations" element={<Invitations />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
             </Route>
             <Route element={<AdminRoute />}>

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { createSquad, joinSquad, leaveSquad, searchSquads } from "../api/squads";
 import { isApiError } from "../api/auth";
 import type { SquadSummaryResponse } from "../types";
@@ -100,8 +101,20 @@ export function Squads() {
             className="flex items-center justify-between rounded border border-gray-200 p-3"
           >
             <div>
-              <p className="font-medium text-gray-900">{squad.name}</p>
-              <p className="text-sm text-gray-500">{squad.memberCount} members</p>
+              {squad.isCurrentUserMember ? (
+                <Link
+                  to={`/squads/${squad.id}`}
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  {squad.name}
+                </Link>
+              ) : (
+                <p className="font-medium text-gray-900">{squad.name}</p>
+              )}
+              <p className="text-sm text-gray-500">
+                {squad.memberCount} members
+                {squad.currentUserRole ? ` · ${squad.currentUserRole}` : ""}
+              </p>
             </div>
             <button
               type="button"

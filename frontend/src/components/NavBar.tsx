@@ -25,6 +25,9 @@ export function NavBar() {
         <NavLink to="/squads" className={linkClass}>
           Squads
         </NavLink>
+        <NavLink to="/invitations" className={linkClass}>
+          Invitations
+        </NavLink>
         <NavLink to="/leaderboards" className={linkClass}>
           Leaderboards
         </NavLink>

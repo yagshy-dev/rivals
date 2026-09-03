@@ -65,16 +65,40 @@ via direct HTTP calls, to prove each user story from spec.md:
 5. **Expect**: that account now appears in the squad's member list without leaving any other
    squad it already belonged to.
 
-### US4 — Leaderboards (P3)
+### US4 — Group-scoped roles and invitations (P2)
+
+1. As User A, create a squad `Design Guild`.
+2. **Expect**: `GET /api/squads/{id}/members` shows A with `role: "MANAGER"`.
+3. As A, `GET /api/users?search=B` to find User B, then `POST /api/squads/{id}/invitations` with
+   B's id.
+4. **Expect**: `201`, invitation `status: "PENDING"`; B is not yet in the members list.
+5. As User B, `GET /api/invitations` shows the pending invite; `POST
+   /api/invitations/{id}/accept`.
+6. **Expect**: `200`, invitation `status: "ACCEPTED"`; B now appears in `GET
+   /api/squads/{id}/members` with `role: "MEMBER"`.
+7. As B (still a `MEMBER`), attempt `POST /api/squads/{id}/invitations` for a third user.
+8. **Expect**: `403 FORBIDDEN` per `contracts/errors.md` (only Managers may invite).
+9. As A, `POST /api/squads/{id}/members/{B's userId}/promote`.
+10. **Expect**: `200`, B's role becomes `"MANAGER"`; B can now invite/promote in this squad, while
+    still being a `MEMBER` of any other squad they belong to.
+
+### US5 — Leaderboards, including the Global/squad toggle (P3)
 
 1. With at least two squads of different sizes and differing approved points (reuse US1/US2/US3
    data plus one more approved submission for a second squad), open the squad leaderboard sorted
    by `total`, then by `average`.
 2. **Expect**: the two sort orders are demonstrably different when member counts differ, and the
-   individual leaderboard lists users strictly by descending total approved points, matching
-   `contracts/leaderboards.md`.
+   individual leaderboard (`GET /api/leaderboards/individual`, no `squadId`) lists users strictly
+   by descending total approved points, matching `contracts/leaderboards.md`.
+3. As a user who belongs to `Design Guild`, call `GET
+   /api/leaderboards/individual?squadId={Design Guild's id}`.
+4. **Expect**: `200`, rows restricted to `Design Guild`'s current members only; the selector in the
+   UI defaults to "Global" on first load (FR-034) and lists only squads that user belongs to
+   (FR-035).
+5. As a user who is NOT a member of `Design Guild`, repeat step 3's call with that squad's id.
+6. **Expect**: `403 FORBIDDEN` per `contracts/errors.md` (FR-035 enforced server-side).
 
 ## Success signal
 
-All four scenarios above pass without any manual database edits or restarts beyond the initial
-`spring-boot:run` — confirms SC-001 through SC-006 from spec.md are met end-to-end.
+All scenarios above pass without any manual database edits or restarts beyond the initial
+`spring-boot:run` — confirms SC-001 through SC-010 from spec.md are met end-to-end.

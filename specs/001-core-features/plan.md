@@ -6,14 +6,17 @@
 
 ## Summary
 
-Deliver the four core Rivals capabilities: (1) employees log an activity (type, distance/duration,
+Deliver the five core Rivals capabilities: (1) employees log an activity (type, distance/duration,
 screenshot) which starts as Pending; (2) an admin approves or rejects each Pending submission, with
 approval automatically awarding points via a fixed per-activity-type rate table; (3) employees can
-search for, create, and join multiple squads; (4) the app shows a global individual leaderboard and
-a group leaderboard sortable by total or average points per member. Technical approach: a Spring
-Boot 3 (Java 17) REST API backed by local PostgreSQL, a React 18 + TypeScript (Vite, Tailwind) SPA
-built UI-first against checked-in mock JSON fixtures before wiring to the real API, all developed
-and run via Windows PowerShell with no Docker.
+search for, create, and join multiple squads; (4) a squad's creator is automatically its Manager,
+Managers can invite specific employees (who must accept before becoming Members) and can promote
+Members to also be Managers, all scoped per-squad; (5) the app shows a global individual
+leaderboard, a group leaderboard sortable by total or average points per member, and a dropdown/tab
+selector to switch the individual leaderboard between the Global view and any squad the user
+belongs to. Technical approach: a Spring Boot 3 (Java 17) REST API backed by local PostgreSQL, a
+React 18 + TypeScript (Vite, Tailwind) SPA built UI-first against checked-in mock JSON fixtures
+before wiring to the real API, all developed and run via Windows PowerShell with no Docker.
 
 ## Technical Context
 
@@ -44,8 +47,9 @@ DTOs MUST be strict/explicit on both sides of the Java↔TypeScript boundary (Pr
 MUST only ever be calculated/credited at admin-approval time, never at submission time
 (Principle IV)
 
-**Scale/Scope**: Single internal company deployment; 4 user-facing capabilities (activity
-submission, admin review/points, squads, leaderboards) across roughly 6-10 screens/views
+**Scale/Scope**: Single internal company deployment; 5 user-facing capabilities (activity
+submission, admin review/points, squads with group-scoped roles and invitations, leaderboards with
+a Global/squad toggle) across roughly 8-12 screens/views
 
 ## Constitution Check
 
@@ -53,14 +57,19 @@ submission, admin review/points, squads, leaderboards) across roughly 6-10 scree
 
 | Principle | Gate | Status |
 |---|---|---|
-| I. UI-First Development | Frontend built against checked-in mock JSON before live API wiring | PASS — Project Structure below reserves `frontend/src/mocks/`; task generation (`/speckit-tasks`) will sequence mock-first per feature slice |
-| II. Strict Type Safety | Java DTOs are explicit records, never entities, at controller boundary; TS `strict: true`, no unjustified `any` | PASS — `contracts/` defines explicit request/response shapes; `data-model.md` separates entities from DTOs |
+| I. UI-First Development | Frontend built against checked-in mock JSON before live API wiring | PASS — Project Structure below reserves `frontend/src/mocks/` (now including squad-members and invitations fixtures, research.md #13); task generation (`/speckit-tasks`) will sequence mock-first per feature slice |
+| II. Strict Type Safety | Java DTOs are explicit records, never entities, at controller boundary; TS `strict: true`, no unjustified `any` | PASS — `contracts/` (incl. new `invitations.md`, `users.md`) defines explicit request/response shapes; `data-model.md` separates entities (`SquadMembership.role`, `SquadInvitation`) from DTOs |
 | III. Small Atomic Steps | No large multi-concern commits | PASS — enforced at task/PR level, not a plan-time artifact; deferred to `/speckit-tasks` |
 | IV. Human-in-the-Loop Approval | No automatic point crediting; points computed only on admin approval | PASS — FR-003/FR-006/FR-007 and `data-model.md` state machine enforce this; points engine is invoked exclusively from the approval transition |
 | V. Fixed Technology Stack | Java 17 + Spring Boot; React 18 + TS + Vite + Tailwind; local PostgreSQL; no substitutions | PASS — Technical Context above uses exactly this stack; no second database or frontend framework introduced |
 | Environment & Tooling Constraints | PowerShell-only, no Docker, no Linux-only tooling | PASS — `quickstart.md` uses only PowerShell commands; Postgres assumed locally installed, not containerized |
 
 No violations identified. Complexity Tracking table is omitted (nothing to justify).
+
+*Post-Phase 1 re-check (Group-Scoped Roles & Leaderboard Toggling addendum)*: `SquadInvitation` is
+a new entity and `contracts/invitations.md`/`contracts/users.md` are new files, but both extend the
+existing `squad` module/pattern rather than introducing a new module, database, or frontend
+framework — all six gates above still PASS with no new violations.
 
 ## Project Structure
 
@@ -84,8 +93,8 @@ backend/
 │   ├── user/            # User entity, repository, controller, DTOs
 │   ├── activity/         # ActivitySubmission entity, repository, controller, DTOs, validation
 │   ├── points/            # ActivityPointRate lookup + points calculation, invoked only on approval
-│   ├── squad/             # Squad + SquadMembership entity, repository, controller, DTOs
-│   ├── leaderboard/        # Read-only leaderboard queries/controller (individual + squad, total/average)
+│   ├── squad/             # Squad + SquadMembership (with role) + SquadInvitation entities, repository, controller, DTOs
+│   ├── leaderboard/        # Read-only leaderboard queries/controller (individual, squad, and squad-scoped individual; total/average)
 │   ├── storage/            # Local-filesystem screenshot storage adapter
 │   ├── config/              # Security, web, storage configuration
 │   └── RivalsApplication.java
@@ -104,7 +113,7 @@ frontend/
 │   ├── api/                    # Typed API client (mock-backed, then live-backed)
 │   ├── types/                   # TypeScript types mirroring backend DTOs
 │   ├── components/               # Shared/presentational components
-│   ├── pages/                     # ActivitySubmit, AdminReviewQueue, Squads, Leaderboards
+│   ├── pages/                     # ActivitySubmit, AdminReviewQueue, Squads, SquadDetail (members/roles/invite), Invitations, Leaderboards (Global/squad selector)
 │   └── App.tsx / main.tsx
 ├── index.html
 ├── vite.config.ts

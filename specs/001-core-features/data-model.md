@@ -22,7 +22,8 @@ Represents an employee account.
 `ActivitySubmission` rows where `status = APPROVED`. Computed at read time (see research.md #5).
 
 **Relationships**: many-to-many with `Squad` via `SquadMembership`; one-to-many with
-`ActivitySubmission` as submitter; one-to-many with `ActivitySubmission` as reviewing admin.
+`ActivitySubmission` as submitter; one-to-many with `ActivitySubmission` as reviewing admin;
+one-to-many with `SquadInvitation` as invitee and as inviting Manager.
 
 ## Entity: ActivitySubmission
 
@@ -84,14 +85,51 @@ Join table representing a user's membership in a squad.
 | id | UUID | Primary key |
 | userId | UUID (FK → User) | |
 | squadId | UUID (FK → Squad) | |
+| role | enum: `MANAGER`, `MEMBER` | Scoped to this membership only (FR-021); set `MANAGER` at squad creation for the creator, `MEMBER` for anyone who joins/accepts otherwise (FR-020, FR-025) |
 | joinedAt | timestamp | |
 
 **Constraints**: unique on `(userId, squadId)` — a user cannot join the same squad twice; no
 upper bound on how many `SquadMembership` rows a `User` or `Squad` may have (FR-012, spec
-Assumptions). Deleting a row represents "leave squad."
+Assumptions). Deleting a row represents "leave squad." A squad MAY have more than one row with
+`role = MANAGER` (research.md #9 — a Manager can promote another Member to Manager, FR-031); there
+is no action that changes a row's role back from `MANAGER` to `MEMBER` (spec Assumptions).
 
 **Required index** (SC-007, research.md #5 update): `(squadId)` on `SquadMembership`, for
 computing a squad's member count/total/average without scanning the whole table.
+
+## Entity: SquadInvitation
+
+Represents an offer for a specific user to join a specific squad, sent by that squad's Manager
+(spec Key Entities — Squad Invitation; research.md #10).
+
+| Field | Type | Notes |
+|---|---|---|
+| id | UUID | Primary key |
+| squadId | UUID (FK → Squad) | |
+| invitedUserId | UUID (FK → User) | The invitee |
+| invitedByUserId | UUID (FK → User) | The Manager who sent the invite |
+| status | enum: `PENDING`, `ACCEPTED`, `DECLINED` | State machine below |
+| createdAt | timestamp | Set on creation |
+| decidedAt | timestamp, nullable | Set on accept/decline |
+
+**State machine**:
+
+```text
+PENDING --(invited user accepts)--> ACCEPTED   [creates a SquadMembership row, role = MEMBER]
+PENDING --(invited user declines)--> DECLINED  [no SquadMembership row created]
+```
+
+`ACCEPTED` and `DECLINED` are terminal (FR-027, FR-028). A `DECLINED` invitation does not block a
+future invitation to the same `(invitedUserId, squadId)` pair (FR-028, spec Assumptions).
+
+**Validation rules**: creation requires the caller to hold a `SquadMembership` with
+`role = MANAGER` for `squadId` (FR-022, FR-024); rejected if `invitedUserId` already has a
+`SquadMembership` for `squadId` (FR-030) or already has a `PENDING` invitation for `squadId`
+(FR-029).
+
+**Required index**: partial unique index on `(invitedUserId, squadId)` where
+`status = 'PENDING'` — enforces FR-029 at the database level and serves the "my pending invites"
+lookup (FR-026) via `(invitedUserId, status)`.
 
 ## Reference Data: ActivityPointRate
 
@@ -118,3 +156,7 @@ Not persisted; computed per request (research.md #5):
 - **Squad leaderboard row**: `{ squadId, name, memberCount, totalPoints, averagePoints }`,
   ordered by `totalPoints DESC, name ASC` (total view) or `averagePoints DESC, name ASC`
   (average view), paginated via `limit`/`offset` (SC-007, research.md #5 update).
+- **Squad-scoped individual leaderboard row**: same shape and tie-break as the individual
+  leaderboard row above, but restricted to `SquadMembership` rows for one `squadId` — the "Global
+  vs. a specific squad" selector view (spec User Story 5 scenarios 5-6, FR-033–FR-035;
+  research.md #12). The requesting user MUST currently be a member of `squadId`.

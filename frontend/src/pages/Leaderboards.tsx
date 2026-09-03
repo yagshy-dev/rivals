@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { getIndividualLeaderboard, getSquadLeaderboard } from "../api/leaderboards";
-import type { IndividualLeaderboardRow, SquadLeaderboardRow, SquadSortBy } from "../types";
+import { searchSquads } from "../api/squads";
+import type {
+  IndividualLeaderboardRow,
+  SquadLeaderboardRow,
+  SquadSortBy,
+  SquadSummaryResponse,
+} from "../types";
+
+const GLOBAL_VIEW = "GLOBAL";
 
 export function Leaderboards() {
   const [individual, setIndividual] = useState<IndividualLeaderboardRow[] | null>(null);
@@ -8,11 +16,21 @@ export function Leaderboards() {
   const [squads, setSquads] = useState<SquadLeaderboardRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [mySquads, setMySquads] = useState<SquadSummaryResponse[]>([]);
+  const [selectedView, setSelectedView] = useState<string>(GLOBAL_VIEW);
+
   useEffect(() => {
-    getIndividualLeaderboard()
+    searchSquads("", true)
+      .then(setMySquads)
+      .catch(() => setError("Failed to load your squads"));
+  }, []);
+
+  useEffect(() => {
+    const squadId = selectedView === GLOBAL_VIEW ? undefined : selectedView;
+    getIndividualLeaderboard(squadId)
       .then(setIndividual)
       .catch(() => setError("Failed to load the individual leaderboard"));
-  }, []);
+  }, [selectedView]);
 
   useEffect(() => {
     getSquadLeaderboard(squadSortBy)
@@ -25,7 +43,24 @@ export function Leaderboards() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <section>
-        <h1 className="mb-4 text-xl font-semibold text-gray-900">Individual Leaderboard</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-gray-900">Individual Leaderboard</h1>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            View
+            <select
+              value={selectedView}
+              onChange={(e) => setSelectedView(e.target.value)}
+              className="rounded border border-gray-300 px-2 py-1"
+            >
+              <option value={GLOBAL_VIEW}>Global</option>
+              {mySquads.map((squad) => (
+                <option key={squad.id} value={squad.id}>
+                  {squad.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {!individual && <p className="text-gray-500">Loading...</p>}
         {individual && (
           <table className="w-full border-collapse text-left text-sm">

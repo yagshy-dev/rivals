@@ -2,6 +2,8 @@ package com.rivals.squad;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -20,17 +22,27 @@ public class SquadMembership {
     @Column(name = "squad_id", nullable = false)
     private UUID squadId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SquadRole role;
+
     @Column(name = "joined_at", nullable = false)
     private Instant joinedAt;
 
     protected SquadMembership() {
     }
 
-    public SquadMembership(UUID id, UUID userId, UUID squadId, Instant joinedAt) {
+    public SquadMembership(UUID id, UUID userId, UUID squadId, SquadRole role, Instant joinedAt) {
         this.id = id;
         this.userId = userId;
         this.squadId = squadId;
+        this.role = role;
         this.joinedAt = joinedAt;
+    }
+
+    /** FR-031: a Manager can promote another Member of the same squad to also be a Manager. */
+    public void promoteToManager() {
+        this.role = SquadRole.MANAGER;
     }
 
     public UUID getId() {
@@ -43,6 +55,10 @@ public class SquadMembership {
 
     public UUID getSquadId() {
         return squadId;
+    }
+
+    public SquadRole getRole() {
+        return role;
     }
 
     public Instant getJoinedAt() {

@@ -2,6 +2,7 @@ package com.rivals.config;
 
 import com.rivals.common.ConflictException;
 import com.rivals.common.ErrorResponse;
+import com.rivals.common.ForbiddenException;
 import com.rivals.common.NotFoundException;
 import com.rivals.common.ValidationException;
 import java.util.List;
@@ -70,6 +71,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ErrorResponse.of(409, "CONFLICT", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(403, "FORBIDDEN", ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

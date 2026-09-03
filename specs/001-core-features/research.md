@@ -96,13 +96,74 @@ document records the decisions and why the alternatives were rejected.
   (rejected — the spec allows it but showing `0` is more transparent and requires no special-case
   filtering logic).
 
-## 8. Frontend Mock-First Data Shape
+## 9. Squad Roles & Multiple Managers
+
+- **Decision**: Store `role` (`MANAGER` | `MEMBER`) directly on the `SquadMembership` row rather
+  than a separate roles/permissions table. A squad may have more than one `MANAGER` membership row
+  (spec Clarifications 2026-09-03 — promotion). Authorization checks (invite, promote) load the
+  caller's `SquadMembership` for the target squad and require `role = MANAGER`.
+- **Rationale**: The role is entirely scoped to one `(user, squad)` pair (FR-021) — it is a
+  property of the membership, not of the user or the squad independently. A single-column enum on
+  the existing join row is the simplest structure that supports both per-squad scoping and
+  multiple Managers with no schema beyond one new column.
+- **Alternatives considered**: A separate `SquadRole` table keyed by `(squadId, userId, role)`
+  (rejected — only ever one role per membership at a time in this spec, so it would be a
+  needlessly normalized 1:1 relationship); a single `managerId` column on `Squad` (rejected —
+  cannot represent multiple Managers, which the clarified spec explicitly requires).
+
+## 10. Squad Invitations
+
+- **Decision**: Model invitations as a separate `SquadInvitation` entity with a 3-state lifecycle
+  (`PENDING` → `ACCEPTED` | `DECLINED`, both terminal), decoupled from `SquadMembership`. Accepting
+  an invitation is the only path that creates a `SquadMembership` row from an invite (in addition
+  to self-service join). A partial unique index on `(invitedUserId, squadId)` where
+  `status = 'PENDING'` prevents duplicate pending invites (FR-029) without an extra existence-check
+  query.
+- **Rationale**: Spec Clarifications 2026-09-03 established that invites require explicit
+  accept/decline, not immediate membership — this is a genuine intermediate state that needs its
+  own identity (an invitation can be listed, accepted, or declined independently of any
+  membership), not just a boolean flag on `SquadMembership`.
+- **Alternatives considered**: A `status` column directly on a pre-created `SquadMembership` row
+  (`INVITED`/`ACTIVE`) (rejected — conflates "not yet a member" with "is a member," complicating
+  every membership-count/leaderboard query, which must only ever see confirmed members); no
+  persistence at all, e.g. an ephemeral notification (rejected — the spec requires the invited user
+  to be able to view and act on the invite at any later time, per FR-026).
+
+## 11. Employee Directory Search for Invites
+
+- **Decision**: Reuse the existing `User` table for invite target search — `GET
+  /api/users?search={query}` matches `displayName` case-insensitively (same pattern as squad name
+  search, FR-010) — rather than introducing a separate employee-directory service or dataset.
+- **Rationale**: Spec Clarifications 2026-09-03 established that Managers pick invitees from a
+  searchable directory, not a raw email field. Employees are already the `User` table; no
+  additional data source exists or is needed at this scale (~5,000 employees, SC-007).
+- **Alternatives considered**: A separate `Employee` directory synced from an external HR system
+  (rejected — no such integration exists or was requested; out of scope per spec Assumptions).
+
+## 12. Per-Squad Leaderboard Scoping
+
+- **Decision**: Extend the existing `GET /api/leaderboards/individual` endpoint with an optional
+  `squadId` query parameter that restricts rows to that squad's current members, rather than
+  adding a parallel endpoint. The server MUST verify the requesting user is currently a member of
+  `squadId` and return `403 FORBIDDEN` otherwise — mirroring FR-035's UI-facing rule ("selector
+  lists only the user's own squads") with a server-side check, since a client-only restriction is
+  not a real access boundary.
+- **Rationale**: The per-squad view (spec User Story 5, scenarios 5-6) is structurally identical to
+  the existing global individual leaderboard — same row shape, same tie-break rule — just filtered
+  to one squad's membership. Reusing the endpoint avoids duplicating pagination/sorting logic that
+  the group leaderboard (`/api/leaderboards/squads`, ranking squads against each other) does not
+  need to change at all.
+- **Alternatives considered**: A new `GET /api/leaderboards/squads/{squadId}/members` endpoint
+  (rejected — would duplicate the individual leaderboard's query/pagination/tie-break logic for no
+  behavioral difference beyond the `WHERE` clause).
+
+## 13. Frontend Mock-First Data Shape
 
 - **Decision**: `frontend/src/mocks/` holds one JSON fixture file per resource (activities,
-  submissions-queue, squads, leaderboard-individual, leaderboard-squads) whose shape is
-  hand-authored to match the `contracts/` response DTOs exactly, and the typed API client in
-  `frontend/src/api/` is written against those types from the start so swapping the mock reader
-  for a real `fetch` call requires no type changes.
+  submissions-queue, squads, leaderboard-individual, leaderboard-squads, squad-members,
+  invitations) whose shape is hand-authored to match the `contracts/` response DTOs exactly, and
+  the typed API client in `frontend/src/api/` is written against those types from the start so
+  swapping the mock reader for a real `fetch` call requires no type changes.
 - **Rationale**: Operationalizes Constitution Principle I (UI-First Development) — the mock
   fixtures are the contract the backend implements against, not throwaway data.
 - **Alternatives considered**: Inline mock objects scattered in component files (rejected —

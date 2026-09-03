@@ -69,6 +69,27 @@ public class LeaderboardRepository {
                 rs.getBigDecimal("average_points")), limit, offset);
     }
 
+    /**
+     * FR-033: the same individual-leaderboard shape and tie-break, restricted to one squad's
+     * current members (research.md #12) — the per-squad view of the Global/squad toggle.
+     */
+    public List<UnrankedIndividualRow> findIndividualLeaderboardForSquad(UUID squadId, int limit, long offset) {
+        String sql = """
+                SELECT u.id AS user_id, u.display_name AS display_name,
+                       COALESCE(SUM(s.points_awarded), 0) AS total_points
+                FROM users u
+                JOIN squad_memberships sm ON sm.user_id = u.id AND sm.squad_id = ?
+                LEFT JOIN activity_submissions s ON s.user_id = u.id AND s.status = 'APPROVED'
+                GROUP BY u.id, u.display_name
+                ORDER BY total_points DESC, u.display_name ASC
+                LIMIT ? OFFSET ?
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new UnrankedIndividualRow(
+                UUID.fromString(rs.getString("user_id")),
+                rs.getString("display_name"),
+                rs.getBigDecimal("total_points")), squadId, limit, offset);
+    }
+
     public record UnrankedIndividualRow(UUID userId, String displayName, BigDecimal totalPoints) {
     }
 

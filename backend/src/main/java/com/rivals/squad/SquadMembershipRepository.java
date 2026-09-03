@@ -11,6 +11,8 @@ public interface SquadMembershipRepository extends JpaRepository<SquadMembership
 
     List<SquadMembership> findByUserId(UUID userId);
 
+    List<SquadMembership> findBySquadId(UUID squadId);
+
     long countBySquadId(UUID squadId);
 
     void deleteByUserIdAndSquadId(UUID userId, UUID squadId);

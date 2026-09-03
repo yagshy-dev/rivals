@@ -21,6 +21,25 @@
   moment, what should happen to the second admin's action? → A: The second action is rejected as
   a conflict (the submission is no longer Pending by the time it runs).
 - Q: Roughly how many employees is Rivals expected to support? → A: Up to ~5,000 employees.
+- Q: When a Manager invites a user to their squad, does that user become a member immediately, or
+  do they need to accept the invite first? → A: The invited user must explicitly accept a pending
+  invite before becoming a Member (declining leaves them uninvited, not a member).
+- Q: How does a Manager identify which employee to invite? → A: By searching/selecting from an
+  employee directory (matching by name), not by typing a raw email address.
+- Q: Can a squad have more than one Manager (e.g., can a Manager promote a Member to also be a
+  Manager), especially to cover a Manager leaving the company? → A: Yes — a Manager can promote
+  another Member of that squad to also be a Manager, so a squad can have multiple Managers and is
+  not permanently orphaned when one Manager departs.
+
+### Session 2026-09-03 (Group Roles & Leaderboard Toggling)
+
+- Decision: When a user creates a squad, they are automatically assigned the "Manager" role for
+  that specific squad.
+- Decision: Squad roles are scoped per-squad — a user can be "Manager" of one squad while being a
+  regular "Member" of another squad at the same time.
+- Decision: Only a squad's Manager(s) may invite new users directly into that squad.
+- Decision: The leaderboard view must offer a dropdown or tab selector letting a user switch
+  between the Global company-wide ranking and the ranking of any specific squad they belong to.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -103,9 +122,10 @@ member list while remaining a member of any other squad they had already joined.
 **Acceptance Scenarios**:
 
 1. **Given** no squad named "Marketing Runners" exists, **When** a user creates a squad with that
-   name, **Then** the squad exists with that user as its first member.
+   name, **Then** the squad exists with that user as its first member, and that user is assigned
+   the "Manager" role for that squad.
 2. **Given** an existing squad, **When** a different user searches for it by name, **Then** it
-   appears in the search results and they can join it.
+   appears in the search results and they can join it as a "Member".
 3. **Given** a user who already belongs to one squad, **When** they join a second squad, **Then**
    they remain a member of both.
 4. **Given** a squad name that already exists, **When** a user tries to create another squad with
@@ -113,12 +133,62 @@ member list while remaining a member of any other squad they had already joined.
 
 ---
 
-### User Story 4 - View Individual and Group Leaderboards (Priority: P3)
+### User Story 4 - Group-Scoped Roles and Invitations (Priority: P2)
+
+A squad's creator needs to manage who is allowed to join their squad directly, without waiting for
+every member to find and self-join it. The creator is automatically the squad's "Manager" and can
+invite specific employees into the squad. An invited employee sees the pending invite and must
+explicitly accept it before becoming a Member — declining leaves them uninvited rather than a
+member. Regular members of that same squad cannot send invites. A Manager can also promote another
+Member of that same squad to also be a Manager, so a squad can have more than one Manager and is
+not left without one if a Manager departs. Because roles are scoped per squad, the same employee
+can be a Manager of one squad they started while simply being a Member of another squad they
+joined.
+
+**Why this priority**: Invitations are a faster on-ramp for squad membership than search-and-join
+alone, and establishing who may extend that on-ramp (the Manager) protects squad composition. It
+depends on squads already existing (User Story 3) but is not required for the core submit/approve/
+points loop, so it ranks alongside squad creation rather than above the P1 stories.
+
+**Independent Test**: Can be fully tested by creating a squad as User A (confirming A is Manager),
+inviting User B (confirming B sees a pending invite but is not yet a Member), having B accept it
+(confirming B becomes a Member), and then confirming User B's attempt to invite User C is rejected
+while User A's invite of User C succeeds. Separately, confirm a declined invite does not create a
+membership, that User A can promote Member D to Manager and D can then also invite/promote, and
+that User A can be Manager of that squad while being a Member of a second squad created by someone
+else.
+
+**Acceptance Scenarios**:
+
+1. **Given** User A creates a new squad, **When** the squad is created, **Then** User A holds the
+   "Manager" role for that squad.
+2. **Given** User A is Manager of a squad, **When** User A searches the employee directory by name,
+   selects User B, and sends the invite, **Then** User B sees a pending invite for that squad but
+   does not yet become a Member.
+3. **Given** User B has a pending invite to a squad, **When** User B accepts the invite, **Then**
+   User B becomes a "Member" of that squad and the invite is marked "Accepted".
+4. **Given** User B has a pending invite to a squad, **When** User B declines the invite, **Then**
+   User B does not become a member of that squad and the invite is marked "Declined".
+5. **Given** User B is a "Member" (not Manager) of a squad, **When** User B attempts to invite
+   another user, **Then** the invite is rejected with an authorization error and no invite is sent.
+6. **Given** User A is Manager of Squad 1 and a Member of Squad 2, **When** User A's role is viewed
+   in each squad, **Then** Squad 1 shows User A as Manager and Squad 2 shows User A as Member,
+   independently of each other.
+7. **Given** User A is Manager of a squad that also has Member User D, **When** User A promotes
+   User D to Manager, **Then** the squad has two Managers (A and D), and D can now invite users and
+   promote other Members.
+8. **Given** User B is a Member (not Manager) of a squad, **When** User B attempts to promote
+   another Member to Manager, **Then** the action is rejected with an authorization error.
+
+---
+
+### User Story 5 - View Individual and Group Leaderboards (Priority: P3)
 
 Any employee wants to see how they and their squads compare to others. They open a global
 leaderboard ranking all individual users by total approved points, and a group leaderboard ranking
 squads — which they can sort either by each squad's total combined points or by each squad's
-average points per member.
+average points per member. From the leaderboard view, they can switch between the Global ranking
+and the ranking of any specific squad they belong to using a dropdown or tab selector.
 
 **Why this priority**: Leaderboards are the payoff feature that makes the points and squads
 meaningful, but they are read-only views that depend on data produced by the first three stories,
@@ -126,8 +196,9 @@ so they are built last.
 
 **Independent Test**: Can be fully tested by approving submissions for several users across two
 squads with different member counts, then confirming the individual leaderboard orders users by
-total approved points, and the group leaderboard produces a different order when sorted by total
-versus by average.
+total approved points, the group leaderboard produces a different order when sorted by total versus
+by average, and a user belonging to those squads can switch the leaderboard view between Global and
+each squad via the selector.
 
 **Acceptance Scenarios**:
 
@@ -141,6 +212,11 @@ versus by average.
    can differ from the total-points order.
 4. **Given** a submission that is still Pending or has been Rejected, **When** leaderboards are
    viewed, **Then** its points are not included in any user's or squad's total.
+5. **Given** a user who is a member of one or more squads, **When** they open the leaderboard view,
+   **Then** a dropdown or tab selector lets them switch between "Global" rankings and the ranking of
+   any specific squad they belong to, and the displayed rankings update accordingly.
+6. **Given** a user who belongs to no squads, **When** they open the leaderboard selector, **Then**
+   only the "Global" option is available and no squad options are shown.
 
 ---
 
@@ -163,6 +239,19 @@ versus by average.
 - What happens when two admins try to approve or reject the same Pending submission at nearly the
   same time? The second admin's action MUST be rejected as a conflict, since the submission is no
   longer Pending once the first decision is applied — submissions are never double-processed.
+- What happens when a squad's only Manager leaves that squad without first promoting anyone? The
+  squad continues to exist with its remaining Members, but has no Manager and therefore no one can
+  invite new users or promote a new Manager; the squad remains without a Manager until an admin
+  intervenes, since this feature does not include an admin-driven squad-management capability.
+- What happens when a Member (not a Manager) tries to invite a user to a squad? The invite MUST be
+  rejected with an authorization error, since only that squad's Manager(s) may invite.
+- What happens when a user already has a pending invite to a squad and is invited again for that
+  same squad? The system MUST NOT create a duplicate pending invite; the existing pending invite
+  stands.
+- What happens when a user declines a squad invite? No membership is created, and the decline MUST
+  NOT permanently block future invites — a squad's Manager MAY invite that same user again later.
+- What happens when a Manager invites a user who is already a Member of that squad? The invite MUST
+  be rejected at creation as redundant, since the user is already a member.
 
 ## Requirements *(mandatory)*
 
@@ -209,6 +298,42 @@ versus by average.
 - **FR-019**: The system MUST reject an approve or reject action on a submission that is no
   longer Pending (e.g., already decided by another admin) with a conflict error, rather than
   applying the decision a second time.
+- **FR-020**: The system MUST automatically assign the "Manager" role, scoped to that squad, to the
+  user who creates it.
+- **FR-021**: The system MUST track a squad membership role ("Manager" or "Member") per user, per
+  squad, independently — a user's role in one squad MUST NOT affect their role in any other squad.
+- **FR-022**: The system MUST let only a squad's Manager(s) invite new users to that squad by
+  creating a "Pending" invitation for the invited user; an invite MUST NOT create membership by
+  itself.
+- **FR-023**: The system MUST let a Manager search for and select an employee from an employee
+  directory (matching by name) when creating an invite, rather than requiring a raw email address
+  entry.
+- **FR-024**: The system MUST reject an invite action attempted by a user who is a Member (not a
+  Manager) of the target squad, with an authorization error, and MUST NOT send the invite.
+- **FR-025**: The system MUST assign the "Member" role to any user who joins a squad other than by
+  creating it (whether by accepting a Pending invite or via self-service search-and-join).
+- **FR-026**: The system MUST let an invited user view their own Pending invites and either accept
+  or decline each one.
+- **FR-027**: Upon acceptance, the system MUST add the invited user as a "Member" of that squad and
+  mark the invitation "Accepted".
+- **FR-028**: Upon decline, the system MUST NOT add the invited user to the squad and MUST mark the
+  invitation "Declined"; a Declined invite MUST NOT prevent a squad Manager from inviting that same
+  user again later.
+- **FR-029**: The system MUST prevent a duplicate Pending invitation from being created for the
+  same user and squad pair while one already exists.
+- **FR-030**: The system MUST reject an invite to a user who is already a Member of the target
+  squad.
+- **FR-031**: The system MUST let a squad's Manager promote another Member of that same squad to
+  also hold the "Manager" role for that squad, so a squad MAY have more than one Manager.
+- **FR-032**: The system MUST reject a promote-to-Manager action attempted by a user who is a
+  Member (not a Manager) of the target squad, with an authorization error.
+- **FR-033**: The system MUST provide a dropdown or tab selector on the leaderboard view letting the
+  user switch between the Global company-wide ranking and the ranking of any specific squad they
+  are currently a member of.
+- **FR-034**: The system MUST default the leaderboard view to the Global ranking when a user first
+  opens it.
+- **FR-035**: The leaderboard selector MUST list only squads the current user is a member of, not
+  every squad in the system.
 
 ### Key Entities
 
@@ -221,6 +346,16 @@ versus by average.
   reviewing admin and decision timestamp (once decided).
 - **Squad**: A named team that users can join. Attributes: name (unique), member list, total points
   (derived, sum of members' approved points), average points (derived, total ÷ member count).
+- **Squad Membership**: The relationship between one user and one squad. Attributes: user, squad,
+  role ("Manager" or "Member", scoped to this squad only), joined timestamp. A user has one
+  independent Squad Membership record — and therefore one independent role — per squad they belong
+  to. Created when a self-service join completes or a Squad Invitation is Accepted. A squad MAY
+  have more than one Membership with role "Manager", since a Manager can promote another Member to
+  also be a Manager.
+- **Squad Invitation**: An offer for a specific user to join a specific squad, sent by that squad's
+  Manager. Attributes: inviting Manager, invited user, squad, status (Pending/Accepted/Declined),
+  created timestamp, decision timestamp (once Accepted or Declined). Accepting creates a Squad
+  Membership for the invited user with role "Member"; declining creates no membership.
 - **Activity Point Rate**: The fixed scoring rule per activity type — Running 10 pts/km, Cycling 4
   pts/km, Swimming 20 pts/km, Yoga 1 pt/min — used to calculate points at approval time.
 
@@ -242,13 +377,30 @@ versus by average.
   versus by average points per member produces a demonstrably different, correct ordering.
 - **SC-007**: The system supports up to approximately 5,000 employees, with leaderboard and squad
   search/list views returning results in under 1 second at that scale.
+- **SC-008**: A user can switch the leaderboard view between Global rankings and any of their
+  squads' rankings in a single interaction (e.g., one click or tap), without navigating to a
+  different page.
+- **SC-009**: 100% of invite attempts made by a non-Manager member of a squad are rejected, and
+  100% of invite attempts made by that squad's Manager succeed in creating a Pending invitation
+  (assuming a valid, not-already-invited, not-already-member invitee).
+- **SC-010**: An invited user can accept or decline a pending squad invite in a single interaction,
+  and the resulting membership state (Member vs. no membership) is immediately reflected.
 
 ## Assumptions
 
 - Two account roles exist: regular employee and admin; role assignment itself (who becomes an
-  admin) is outside this feature's scope and is assumed to be pre-provisioned.
+  admin) is outside this feature's scope and is assumed to be pre-provisioned. This is a
+  company-wide role, separate from the per-squad Manager/Member role described below.
 - Each activity submission carries exactly one screenshot as evidence.
 - A user may belong to an unlimited number of squads, and a squad has no maximum member count.
+- The squad's creator becomes its first Manager; that Manager (or any other current Manager) may
+  promote additional Members to Manager, but there is no "demote a Manager back to Member" or
+  "remove a Manager" action in this feature — once promoted, a Manager stays a Manager unless they
+  leave the squad entirely.
+- A Pending invite has no expiration; it remains Pending indefinitely until the invited user
+  accepts or declines it.
+- Declining an invite is not a permanent block: the same Manager (or a later Manager) may invite
+  that user again.
 - A Rejected submission is terminal (not editable); a user wanting credit for that workout submits
   a new entry.
 - A squad's total and average points always reflect its *current* membership — points travel with

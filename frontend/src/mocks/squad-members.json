@@ -1,0 +1,4 @@
+[
+  { "userId": "00000000-0000-0000-0000-000000000001", "displayName": "Alex Admin", "role": "MANAGER", "joinedAt": "2026-09-01T00:00:00Z" },
+  { "userId": "00000000-0000-0000-0000-000000000002", "displayName": "Uma User", "role": "MEMBER", "joinedAt": "2026-09-02T00:00:00Z" }
+]

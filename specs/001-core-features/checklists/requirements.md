@@ -35,4 +35,13 @@
   reasonable defaults (documented in the Assumptions section) were used for role provisioning,
   screenshot cardinality, squad membership limits, rejected-submission handling, and membership
   snapshotting for squad totals.
+- 2026-09-03 update: added Group-Scoped Roles (User Story 4) and Leaderboard Toggling (User Story 5
+  acceptance scenarios 5–6), FR-020–FR-035.
+- 2026-09-03 clarify session: resolved 3 ambiguities via `/speckit-clarify` — invite requires
+  explicit accept/decline (not immediate join), Manager selects invitees via employee-directory
+  search (not raw email), and a squad may have multiple Managers via promotion (closing the
+  orphaned-squad gap when a Manager leaves). All answers integrated into User Story 4, Edge Cases,
+  Functional Requirements (FR-023, FR-026–FR-032), Key Entities (Squad Invitation), and
+  Assumptions. Re-validated: no [NEEDS CLARIFICATION] markers introduced; all checklist items still
+  pass.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
