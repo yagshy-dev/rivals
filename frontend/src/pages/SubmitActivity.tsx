@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
+import { ClipboardList } from "lucide-react";
 import { submitActivity } from "../api/activities";
 import { isApiError } from "../api/auth";
+import { Icon } from "../components/Icon";
 import type { ActivityType } from "../types";
 
 const ACTIVITY_TYPES: { value: ActivityType; label: string; unit: string }[] = [
@@ -50,14 +52,22 @@ export function SubmitActivity() {
 
   return (
     <div className="max-w-md">
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">Submit an Activity</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
+      <div className="mb-5 flex items-center gap-3">
+        <Icon icon={ClipboardList} className="h-6 w-6 text-orange-500" />
+        <h1 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+          Submit an Activity
+        </h1>
+      </div>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-3 rounded-2xl border border-zinc-800/60 bg-[#121214] p-6 shadow-xl"
+      >
+        <label className="flex flex-col gap-1 text-sm text-zinc-400">
           Activity type
           <select
             value={activityType}
             onChange={(e) => setActivityType(e.target.value as ActivityType)}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="rounded-lg border border-zinc-800/80 bg-[#0a0a0b] px-3 py-2 text-white focus:border-orange-500 focus:outline-none"
           >
             {ACTIVITY_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -66,7 +76,7 @@ export function SubmitActivity() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
+        <label className="flex flex-col gap-1 text-sm text-zinc-400">
           {unit === "minutes" ? "Duration (minutes)" : "Distance (km)"}
           <input
             type="number"
@@ -75,28 +85,33 @@ export function SubmitActivity() {
             required
             value={metricValue}
             onChange={(e) => setMetricValue(e.target.value)}
-            className="rounded border border-gray-300 px-3 py-2"
+            className="rounded-lg border border-zinc-800/80 bg-[#0a0a0b] px-3 py-2 text-white focus:border-orange-500 focus:outline-none"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-700">
+        <label className="flex flex-col gap-1 text-sm text-zinc-400">
           Screenshot
           <input
             type="file"
             accept="image/*"
             required
             onChange={(e) => setScreenshot(e.target.files?.[0] ?? null)}
+            className="rounded-lg border border-zinc-800/80 bg-[#0a0a0b] px-3 py-2 text-sm text-white file:mr-3 file:rounded-full file:border-0 file:bg-orange-500 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-black"
           />
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="rounded-lg border-l-4 border-red-500 bg-red-500/10 p-3 text-sm font-medium text-red-500">
+            {error}
+          </p>
+        )}
         {success && (
-          <p className="text-sm text-green-700">
+          <p className="text-sm font-medium text-approved">
             Submitted! Your activity is now Pending admin approval.
           </p>
         )}
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
         >
           {submitting ? "Submitting..." : "Submit"}
         </button>

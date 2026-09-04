@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8081",
+        target: "https://781jh2vf-8000.euw.devtunnels.ms/",
         changeOrigin: true,
       },
     },

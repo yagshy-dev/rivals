@@ -5,7 +5,11 @@ export function ProtectedRoute() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <p className="p-4 text-gray-500">Loading...</p>;
+    return (
+      <p className="animate-pulse p-4 text-xs font-bold uppercase tracking-widest text-orange-500">
+        Loading…
+      </p>
+    );
   }
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -17,7 +21,11 @@ export function AdminRoute() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <p className="p-4 text-gray-500">Loading...</p>;
+    return (
+      <p className="animate-pulse p-4 text-xs font-bold uppercase tracking-widest text-orange-500">
+        Loading…
+      </p>
+    );
   }
   if (!user) {
     return <Navigate to="/login" replace />;

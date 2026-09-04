@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { apiGet, apiPost } from "./client";
-import { ApiError, type LoginRequest, type UserResponse } from "../types";
+import { ApiError, type LoginRequest, type RegisterRequest, type UserResponse } from "../types";
 
 interface AuthContextValue {
   user: UserResponse | null;
@@ -56,4 +56,9 @@ export function useAuth(): AuthContextValue {
 
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
+}
+
+/** FR-036, FR-041: public registration; does not sign the caller in. */
+export async function register(request: RegisterRequest): Promise<void> {
+  await apiPost<UserResponse>("/auth/register", request);
 }

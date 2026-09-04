@@ -1,10 +1,12 @@
 package com.rivals.user;
 
 import com.rivals.user.dto.LoginRequest;
+import com.rivals.user.dto.RegisterRequest;
 import com.rivals.user.dto.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,11 +28,21 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
+    private final UserService userService;
 
     public AuthController(AuthenticationManager authenticationManager,
-            SecurityContextRepository securityContextRepository) {
+            SecurityContextRepository securityContextRepository, UserService userService) {
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
+        this.userService = userService;
+    }
+
+    /** FR-036–FR-041: public registration; does not sign the caller in (contracts/auth.md). */
+    @PostMapping("/register")
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
+        UserResponse response = userService.register(
+                request.email(), request.displayName(), request.password());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")

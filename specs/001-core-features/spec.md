@@ -220,6 +220,44 @@ each squad via the selector.
 
 ---
 
+### User Story 6 - Register a New Account (Priority: P1)
+
+A prospective employee who does not yet have a Rivals account opens the public registration page,
+enters their work email, a display name, and a password, and submits the form. The system creates
+their account with the standard employee role and redirects them to the login page so they can
+sign in with their new credentials.
+
+**Why this priority**: Account creation is the on-ramp for every other capability in this app —
+without a way to create an account, employees can only rely on pre-provisioned seed accounts,
+which does not scale to the full ~5,000-employee population this spec targets (SC-007). It is
+prioritized alongside the P1 submission/approval loop as a prerequisite for onboarding real users.
+
+**Independent Test**: Can be fully tested by submitting the registration form with a new email, a
+display name, and a valid password; confirming a new account is created with the standard employee
+role, zero starting points, and no squad memberships; confirming the browser lands on the login
+page; and confirming the new credentials successfully log the user in from there.
+
+**Acceptance Scenarios**:
+
+1. **Given** no account exists for a given email, **When** a visitor submits the registration form
+   with that email, a display name, and a valid password, **Then** a new account is created with
+   the standard employee role and the visitor is redirected to the login page.
+2. **Given** an account already exists for a given email, **When** a visitor tries to register
+   using that same email (regardless of letter casing), **Then** the registration is rejected with
+   a message that the email is already in use, and no duplicate account is created.
+3. **Given** a visitor leaves the email, display name, or password field empty, **When** they
+   submit the registration form, **Then** the submission is rejected at entry with a validation
+   message and no account is created.
+4. **Given** a visitor enters a password shorter than the minimum required length, **When** they
+   submit the registration form, **Then** the submission is rejected with a validation message
+   describing the minimum requirement, and no account is created.
+5. **Given** a visitor successfully registers, **When** they enter their new email and password on
+   the login page, **Then** they are logged in successfully.
+6. **Given** a visitor who is not logged in, **When** they navigate directly to the registration
+   page's URL, **Then** the page loads without requiring them to sign in first.
+
+---
+
 ### Edge Cases
 
 - What happens when a user submits an activity with a zero or negative distance/duration? The
@@ -252,6 +290,57 @@ each squad via the selector.
   NOT permanently block future invites — a squad's Manager MAY invite that same user again later.
 - What happens when a Manager invites a user who is already a Member of that squad? The invite MUST
   be rejected at creation as redundant, since the user is already a member.
+- What happens when someone submits the registration form twice in quick succession (e.g.,
+  double-clicking submit) with the same email? Only the first request MUST create an account; the
+  second MUST be rejected as a duplicate email, since email uniqueness is enforced regardless of
+  request timing.
+- What happens when someone registers with an email that differs from an existing account's email
+  only in letter case (e.g., "User@Company.com" vs. "user@company.com")? Email matching MUST be
+  case-insensitive, so this MUST be rejected as a duplicate.
+
+## UI/UX Design System *(mandatory)*
+
+These are strict, non-negotiable presentation rules for every screen and component delivered by
+this feature. Unlike the functional requirements above, this section intentionally specifies
+concrete visual tokens (not just outcomes) because the stakeholder has mandated a fixed design
+language; implementers MUST NOT substitute alternative colors, layouts, icon sets, or corner
+treatments.
+
+- **UX-001 (Dark Mode Theme)**: The application MUST use a premium dark-mode theme only (no light
+  mode in scope): page backgrounds MUST use `zinc-950`, surface/card backgrounds MUST use
+  `zinc-900`, and primary text MUST be white.
+- **UX-002 (Sidebar Navigation)**: The application MUST use a persistent left-hand sidebar as the
+  primary navigation layout (covering areas such as Activity Submission, Admin Review, Squads, and
+  Leaderboards). Top-nav-only or bottom-tab navigation MUST NOT be used as the primary navigation
+  pattern.
+- **UX-003 (Apple/macOS-Inspired Aesthetic)**: All containers, cards, buttons, and inputs MUST use
+  smooth, generous rounded corners (e.g., large-radius rounding such as `rounded-2xl` for cards and
+  panels, and `rounded-full`/`rounded-lg` for buttons and pill-shaped controls) and MUST use subtle,
+  soft borders (e.g., `border-zinc-800` or a low-opacity `border-white/10`) rather than
+  high-contrast ones — surfaces should be separated primarily through soft elevation/contrast in
+  background shade, not hard outlines. The overall feel MUST read as elegant, modern, and easy on
+  the eyes. Sharp corners, minimal/near-zero border-radius, and high-contrast or blocky borders
+  MUST NOT be used anywhere in this feature.
+- **UX-004 (Bold Iconography)**: All icons MUST come from the Lucide React icon set, with
+  stroke-width forced to `2.5` everywhere (overriding the library's default stroke-width) to
+  produce a heavier, more aggressive line weight.
+- **UX-005 (Neon Status Badges)**: Status badges MUST use vivid/neon accent colors that stand out
+  against the dark theme: an Approved submission's badge MUST be electric green, and a Rejected
+  submission's badge MUST be crimson red. The Pending badge MUST use a third, visually distinct
+  vivid color so all three statuses remain unambiguous at a glance.
+- **UX-006 (App Layout Wrapping)**: Every authenticated page (every screen reachable only after
+  signing in — Activity Submission, Admin Review, Squads, Invitations, Leaderboards, etc.) MUST be
+  wrapped in a single, shared master layout structure (an `AppLayout`) that owns the overall screen
+  composition rather than each page building its own top-level scaffolding. This layout MUST:
+  (a) fill the full viewport height as a flex container; (b) pin the Sidebar navigation (UX-002) to
+  the left edge, fixed in place; and (c) render the current page's content in an independently
+  scrollable main area to the right, so scrolling a long page never moves or hides the sidebar. The
+  layout's own background MUST be a deep dark grey (e.g., `#0a0a0b`) that is visually distinct from
+  and darker than the card/surface background (e.g., `#121214`), so that cards read as clearly
+  elevated above the page underneath them. The public, unauthenticated pages (Login, Register) are
+  the sole exception: they render as full-screen pages outside `AppLayout` (no Sidebar, since there
+  is no signed-in session yet), but MUST still use the same dark background, card, and accent tones
+  as every other screen so the visual identity is continuous across the sign-in/sign-up boundary.
 
 ## Requirements *(mandatory)*
 
@@ -334,11 +423,31 @@ each squad via the selector.
   opens it.
 - **FR-035**: The leaderboard selector MUST list only squads the current user is a member of, not
   every squad in the system.
+- **FR-036**: The system MUST provide a registration page/flow that does not require the visitor to
+  be authenticated, letting them submit an email, a display name, and a password to create an
+  account.
+- **FR-037**: The system MUST reject a registration attempt at entry if the email, display name, or
+  password is missing, or if the password does not meet the minimum length requirement, with a
+  validation message and without creating an account.
+- **FR-038**: The system MUST reject a registration attempt whose email matches (case-insensitively)
+  an existing account's email, with a message that the email is already registered, and MUST NOT
+  create a duplicate account.
+- **FR-039**: Upon successful registration, the system MUST securely hash the submitted password
+  before storing it and MUST NOT retain or expose the plaintext password beyond the registration
+  request itself.
+- **FR-040**: Upon successful registration, the system MUST create a new account assigned the
+  standard employee role (not Admin), with zero starting points and no squad memberships.
+- **FR-041**: Upon successful registration, the system MUST redirect the visitor to the login page
+  rather than automatically signing them in.
+- **FR-042**: The registration page MUST be reachable directly (e.g., via its own URL) without
+  first navigating through any authenticated part of the application.
 
 ### Key Entities
 
-- **User**: An employee account. Attributes: display name, list of squads they belong to, total
-  Approved points (derived from their own approved submissions).
+- **User**: An employee account. Attributes: email (unique, case-insensitive, used to sign in),
+  display name, password (stored only as a secure hash, never as plaintext), company-wide role
+  ("employee" or "Admin"), list of squads they belong to, total Approved points (derived from their
+  own approved submissions).
 - **Activity Submission**: A single logged workout awaiting or having received review. Attributes:
   submitting user, activity type (Running/Cycling/Swimming/Yoga), distance or duration value,
   screenshot (visible only to the submitting user and admins), status (Pending/Approved/Rejected),
@@ -385,12 +494,20 @@ each squad via the selector.
   (assuming a valid, not-already-invited, not-already-member invitee).
 - **SC-010**: An invited user can accept or decline a pending squad invite in a single interaction,
   and the resulting membership state (Member vs. no membership) is immediately reflected.
+- **SC-011**: A prospective employee can complete registration (email, display name, password) and
+  land on the login page in under 1 minute.
+- **SC-012**: 100% of registration attempts using an email already associated with an existing
+  account are rejected without creating a duplicate account.
+- **SC-013**: 100% of stored passwords are kept as irreversible hashes; no plaintext password is
+  ever retrievable from the system after registration completes.
 
 ## Assumptions
 
-- Two account roles exist: regular employee and admin; role assignment itself (who becomes an
-  admin) is outside this feature's scope and is assumed to be pre-provisioned. This is a
-  company-wide role, separate from the per-squad Manager/Member role described below.
+- Two account roles exist: regular employee and admin; every self-registered account is assigned
+  the standard employee role. Promotion to Admin is outside this feature's scope and is assumed to
+  remain a separate, pre-provisioned action (e.g., performed directly by IT/ops), not something a
+  user can request or trigger via registration. This is a company-wide role, separate from the
+  per-squad Manager/Member role described below.
 - Each activity submission carries exactly one screenshot as evidence.
 - A user may belong to an unlimited number of squads, and a squad has no maximum member count.
 - The squad's creator becomes its first Manager; that Manager (or any other current Manager) may
@@ -407,3 +524,13 @@ each squad via the selector.
   the user, not with a snapshot of past membership.
 - The four supported activity types and their point rates (Running, Cycling, Swimming, Yoga) are
   fixed for this feature; adding new activity types is out of scope.
+- The Pending status badge's exact vivid color is not specified by the stakeholder beyond "must be
+  visually distinct from the Approved (electric green) and Rejected (crimson red) badges"; a vivid
+  amber/yellow is assumed as a reasonable third neon accent consistent with UX-005.
+- Registration does not include an email verification/confirmation step in this feature; a newly
+  registered account can sign in immediately with no further action, consistent with this being an
+  internal tool for a pre-vetted company population rather than a public-facing consumer product.
+- A minimum password length (e.g., 8 characters) is enforced as a reasonable default; no additional
+  complexity rules (required uppercase/numbers/symbols, etc.) are mandated by this feature.
+- Display names are not required to be unique across accounts; only the email is enforced as
+  unique, since email is the sign-in identifier.

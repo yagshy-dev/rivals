@@ -57,7 +57,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
                         .requestMatchers("/api/activities/pending").hasRole("ADMIN")
                         .requestMatchers("/api/activities/*/approve").hasRole("ADMIN")
                         .requestMatchers("/api/activities/*/reject").hasRole("ADMIN")
