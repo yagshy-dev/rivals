@@ -48,6 +48,22 @@ public class ScreenshotStorageService {
         return ref;
     }
 
+    /** FR-056: removes a previously stored file; a no-op if {@code ref} is null or already gone. */
+    public void delete(String ref) {
+        if (ref == null) {
+            return;
+        }
+        Path path = uploadsDirectory.resolve(ref).normalize();
+        if (!path.startsWith(uploadsDirectory)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to delete file", e);
+        }
+    }
+
     public StoredFile load(String ref) {
         Path path = uploadsDirectory.resolve(ref).normalize();
         if (!path.startsWith(uploadsDirectory) || !Files.exists(path)) {

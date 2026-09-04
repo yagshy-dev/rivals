@@ -43,12 +43,8 @@ public class SquadController {
     @PostMapping
     public ResponseEntity<SquadSummaryResponse> create(
             @AuthenticationPrincipal AppUserPrincipal principal, @Valid @RequestBody CreateSquadRequest request) {
-        return ResponseEntity.status(201).body(squadService.create(request.name(), principal.getId()));
-    }
-
-    @PostMapping("/{id}/join")
-    public SquadSummaryResponse join(@AuthenticationPrincipal AppUserPrincipal principal, @PathVariable UUID id) {
-        return squadService.join(id, principal.getId());
+        return ResponseEntity.status(201)
+                .body(squadService.create(request.name(), request.allowedActivityTypes(), principal.getId()));
     }
 
     @PostMapping("/{id}/leave")

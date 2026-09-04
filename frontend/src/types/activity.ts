@@ -4,6 +4,7 @@ export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface ActivitySubmissionResponse {
   id: string;
+  targetSquadId: string;
   activityType: ActivityType;
   metricValue: number;
   status: SubmissionStatus;

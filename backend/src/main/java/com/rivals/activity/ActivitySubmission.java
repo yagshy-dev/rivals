@@ -25,6 +25,10 @@ public class ActivitySubmission {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    /** FR-047: the Squad this submission's points count toward, selected at submission time. */
+    @Column(name = "target_squad_id", nullable = false)
+    private UUID targetSquadId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "activity_type", nullable = false)
     private ActivityType activityType;
@@ -32,7 +36,8 @@ public class ActivitySubmission {
     @Column(name = "metric_value", nullable = false)
     private BigDecimal metricValue;
 
-    @Column(name = "screenshot_ref", nullable = false)
+    /** FR-056: cleared once the submission is decided — screenshots only support the review itself. */
+    @Column(name = "screenshot_ref")
     private String screenshotRef;
 
     @Enumerated(EnumType.STRING)
@@ -54,10 +59,11 @@ public class ActivitySubmission {
     protected ActivitySubmission() {
     }
 
-    public ActivitySubmission(UUID id, UUID userId, ActivityType activityType, BigDecimal metricValue,
-            String screenshotRef, Instant submittedAt) {
+    public ActivitySubmission(UUID id, UUID userId, UUID targetSquadId, ActivityType activityType,
+            BigDecimal metricValue, String screenshotRef, Instant submittedAt) {
         this.id = id;
         this.userId = userId;
+        this.targetSquadId = targetSquadId;
         this.activityType = activityType;
         this.metricValue = metricValue;
         this.screenshotRef = screenshotRef;
@@ -88,12 +94,21 @@ public class ActivitySubmission {
         }
     }
 
+    /** FR-056: called after the screenshot file itself has been deleted from storage. */
+    public void clearScreenshotRef() {
+        this.screenshotRef = null;
+    }
+
     public UUID getId() {
         return id;
     }
 
     public UUID getUserId() {
         return userId;
+    }
+
+    public UUID getTargetSquadId() {
+        return targetSquadId;
     }
 
     public ActivityType getActivityType() {

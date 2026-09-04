@@ -51,11 +51,27 @@ securely hashed password and redirects to login. Unlike the UI/UX addenda above,
 new user story spanning both backend and frontend, so its tasks (T103-T112, Phase 13) are labeled
 `[US6]` rather than `[UX]`.
 
+**2026-09-04 addendum (fifth, same day)**: spec.md gained **Squad-Strict Submission Rules** and
+**System-Wide User Search**. This revised User Story 1 (submission is now Squad-scoped — a required
+target-Squad selector, dynamically restricted Activity Type options) and User Story 3 (renamed
+"Create a Squad and Define Its Allowed Activities" — self-service joining removed, squads gain an
+allowed-activity-types selection), and added a genuinely new **User Story 7 - Search Users and View
+Public Profiles** (P2). Its tasks (T113-T133, Phase 14) are labeled `[US1]`, `[US3]`, or `[US7]`
+per which story each task serves, since this addendum touches two existing stories and introduces
+one new one rather than being purely additive like Phase 13.
+
+**2026-09-04 addendum (sixth, same day)**: a `/speckit-clarify` session (prompted by the user
+noticing there was no way to change a password or set a profile picture from the UI) added
+**User Story 8 - Manage Account Settings** (P2), and a separate user request added **Screenshot
+Retention** — an activity submission's screenshot is now deleted once an admin decides it. The
+former is a genuinely new user story; the latter revises User Story 2 and FR-018 rather than
+adding a story. Both are delivered together in Phase 15, labeled `[US2]` or `[US8]` per task.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1, US2, US3, US4, US5, US6), or `UX` for
-  cross-cutting UI/UX Design System work (Phases 10-12, applying to all stories' pages)
+- **[Story]**: Which user story this task belongs to (US1, US2, US3, US4, US5, US6, US7, US8), or
+  `UX` for cross-cutting UI/UX Design System work (Phases 10-12, applying to all stories' pages)
 - File paths are relative to the repository root
 
 ## Path Conventions
@@ -753,6 +769,197 @@ redirected to `/login`, without needing a pre-provisioned seed account.
 
 ---
 
+## Phase 14: Squad-Strict Submission Rules & System-Wide User Search (addendum, 2026-09-04)
+
+**Goal**: Squads become strictly invite-only with a per-squad allowed-activity-types list;
+activity submission requires selecting a target Squad the user belongs to and restricts the
+Activity Type dropdown to that Squad's allowed types; and any user can search a global employee
+directory and view another user's public profile (photo, quote, Global Average), with
+Squad-specific detail gated on a shared Squad.
+
+**Independent Test**: Confirm `Squads.tsx` offers no "Join" control anywhere (only Create and
+browse); create a squad restricted to Swimming and confirm a member of it sees only Swimming on
+the submission form's Activity Type dropdown, while submission is blocked entirely for a user with
+no Squad membership; and confirm a user who shares no Squad with another sees only that other
+user's photo/quote/Global Average on their profile, gaining Squad-specific detail only once they
+share a Squad — per spec.md's US1, US3, and US7 Independent Tests.
+
+### Implementation for Squad-Strict Submissions & User Search
+
+- [X] T113 [P] [US3] Create a Flyway migration adding an `allowed_activity_types` column (e.g.
+      `text[]` or a normalized join table) to `squads`, defaulting every existing row to all four
+      types; adding nullable `photo_url` and `quote` columns to `users`; and adding a
+      `target_squad_id` FK column to `activity_submissions`, backfilled from each existing
+      submission's user's current squad membership then made `NOT NULL`, per data-model.md, in
+      `backend/src/main/resources/db/migration/V4__squad_strict_submissions_and_profiles.sql`
+- [X] T114 [P] [US3] Add an `allowedActivityTypes` field (`Set<ActivityType>`) to the `Squad`
+      entity per FR-046, in `backend/src/main/java/com/rivals/squad/Squad.java`
+      (depends on: T113)
+- [X] T115 [P] [US1] Add a required `targetSquad` (`Squad` reference) field to the
+      `ActivitySubmission` entity per FR-047, in
+      `backend/src/main/java/com/rivals/activity/ActivitySubmission.java` (depends on: T113)
+- [X] T116 [P] [US7] Add `photoUrl` and `quote` fields to the `User` entity per FR-049, in
+      `backend/src/main/java/com/rivals/user/User.java` (depends on: T113)
+- [X] T117 [US3] Update `POST /api/squads` to accept an optional allowed-activity-types selection
+      (defaulting to all four when omitted, FR-011/FR-046) and remove the
+      `POST /api/squads/{id}/join` endpoint entirely, since self-service joining is no longer
+      offered (FR-010/FR-012), in `backend/src/main/java/com/rivals/squad/SquadController.java`
+      and `SquadService.java` (depends on: T114)
+- [X] T118 [US1] Update `POST /api/activities` request/validation to require a `targetSquadId` that
+      the caller currently belongs to (FR-002, FR-047) and to reject an `activityType` outside that
+      Squad's `allowedActivityTypes` (FR-002, FR-048), returning `400` for either violation, in
+      `backend/src/main/java/com/rivals/activity/ActivitySubmissionValidator.java`,
+      `ActivityService.java`, and `dto/` (depends on: T115, T114)
+- [X] T119 [US1] Update the squad leaderboard aggregate query to sum Approved points from
+      submissions whose `targetSquadId` matches the squad, rather than every current member's
+      total points across all their squads (FR-015), in
+      `backend/src/main/java/com/rivals/leaderboard/LeaderboardService.java`
+      (depends on: T115)
+- [X] T120 [P] [US7] Implement `GET /api/users/{id}/profile`, returning photo/quote/Global Average
+      unconditionally and per-shared-squad activity detail only when the caller shares at least one
+      Squad with that user (FR-044, FR-045), via a new `PublicProfileResponse` DTO, in
+      `backend/src/main/java/com/rivals/user/UserController.java`, `UserService.java`, and
+      `backend/src/main/java/com/rivals/user/dto/` — reuses the existing
+      `GET /api/users?search=` directory endpoint (already globally accessible to any
+      authenticated user, FR-043) rather than adding a second search endpoint (depends on: T116)
+- [X] T121 [P] [US7] Implement `PUT /api/users/me/profile` letting the caller set their own
+      `photoUrl`/`quote` (FR-049), in `backend/src/main/java/com/rivals/user/UserController.java`
+      and `UserService.java` (depends on: T116)
+- [X] T122 [P] [US3] Update `frontend/src/mocks/squads.json` to add each squad's
+      `allowedActivityTypes` and drop any "join" affordance from the fixture shape
+- [X] T123 [US3] Update `Squads.tsx` to a browse-only directory (no Join control; show each squad's
+      allowed activity types) and extend its Create form with an allowed-activity-types checkbox
+      group defaulting to all four, against the mock fixture, in `frontend/src/pages/Squads.tsx`
+      (depends on: T122)
+- [X] T124 [P] [US1] Update `frontend/src/mocks/activities.json` and `frontend/src/mocks/squads.json`
+      fixtures so a submission's shape includes `targetSquadId` and each mock squad exposes
+      `allowedActivityTypes` for the submission form to filter against
+- [X] T125 [US1] Add a required target-Squad selector to `SubmitActivity.tsx` that dynamically
+      restricts the Activity Type dropdown to the selected Squad's allowed types (resetting an
+      Activity Type choice the newly selected Squad does not allow), and blocks/redirects a user
+      with no Squad membership to a "join a squad first" prompt, against the mock fixture, in
+      `frontend/src/pages/SubmitActivity.tsx` (depends on: T124)
+- [X] T126 [P] [US7] Create mock JSON fixtures for directory search results and a public profile
+      (both with and without shared-Squad detail present) in `frontend/src/mocks/users.json`
+      (extended) and `frontend/src/mocks/profile.json`
+- [X] T127 [US7] Build `UserDirectory.tsx` (name search box, result list linking to each user's
+      profile) against the mock fixture, in `frontend/src/pages/UserDirectory.tsx` (new page)
+      (depends on: T126)
+- [X] T128 [US7] Build `UserProfile.tsx` (photo, quote, and Global Average always shown; a
+      shared-Squad activity section rendered only when the response includes it) against the mock
+      fixture, in `frontend/src/pages/UserProfile.tsx` (new page) (depends on: T126)
+- [X] T129 [US7] Wire `/directory` and `/users/:id` routes into `frontend/src/App.tsx` (inside the
+      `AppLayout`/`ProtectedRoute` tree, alongside the other authenticated pages) and add a
+      "Directory" nav entry to `Sidebar.tsx`, in `frontend/src/App.tsx` and
+      `frontend/src/components/Sidebar.tsx` (depends on: T127, T128)
+- [X] T130 [US3] Wire `Squads.tsx` to the live create/browse API (post-self-join-removal), remove
+      mock dependency, in `frontend/src/pages/Squads.tsx` (depends on: T117, T123)
+- [X] T131 [US1] Wire `SubmitActivity.tsx` to the live squad-scoped submission API, remove mock
+      dependency, in `frontend/src/pages/SubmitActivity.tsx` (depends on: T118, T125)
+- [X] T132 [US7] Wire `UserDirectory.tsx` and `UserProfile.tsx` to the live directory/profile API,
+      remove mock dependency, in `frontend/src/pages/UserDirectory.tsx` and
+      `frontend/src/pages/UserProfile.tsx` (depends on: T120, T121, T129)
+- [X] T133 Run `mvn -o clean compile` in `backend/` and `npm run typecheck`/`npm run lint`/
+      `npm run build` in `frontend/`, then verify `Squads.tsx` (no Join control), `SubmitActivity.tsx`
+      (Squad selector + filtered Activity Type dropdown), `UserDirectory.tsx`, and `UserProfile.tsx`
+      (shared-vs-unshared-Squad detail) at the source level (depends on: T130, T131, T132) — **not
+      verified**: an actual live round-trip through the new endpoints, since that requires a local
+      PostgreSQL instance with the V4 migration applied, not stood up for this session, the same
+      limitation noted on every prior phase's verification step
+
+**Checkpoint**: Squads are strictly invite-only with per-squad allowed activity types; activity
+submission is Squad-scoped and type-restricted accordingly; and any user can search the global
+directory and view another user's public profile, with Squad-specific detail gated on shared
+membership.
+
+---
+
+## Phase 15: Manage Account Settings & Screenshot Retention (addendum, 2026-09-04)
+
+**Goal**: A signed-in user can upload a profile photo, update their quote, and change their
+password (with current-password verification) from a single Account Settings page; separately, an
+activity submission's screenshot is deleted from storage as soon as an admin approves or rejects
+it.
+
+**Independent Test**: Upload a photo and confirm it appears on the user's own public profile;
+update the quote and confirm the same; change the password with the correct current password and
+confirm the old password no longer logs in while the new one does; confirm a wrong-current-password
+attempt is rejected without changing anything. Separately: approve or reject a Pending submission
+and confirm its screenshot endpoint now returns 404, per spec.md's US8 and revised US2 Independent
+Tests.
+
+### Implementation for Account Settings & Screenshot Retention
+
+- [X] T134 [P] [US2] Create a Flyway migration renaming `users.photo_url` to `photo_ref` (it now
+      stores a storage reference, not a pasted URL, per FR-051) and relaxing
+      `activity_submissions.screenshot_ref` to nullable (FR-056), in
+      `backend/src/main/resources/db/migration/V5__account_settings_and_screenshot_retention.sql`
+- [X] T135 [P] [US2] Add a `delete(ref)` method to `ScreenshotStorageService` (FR-056) in
+      `backend/src/main/java/com/rivals/storage/ScreenshotStorageService.java`
+- [X] T136 [US2] Allow `ActivitySubmission.screenshotRef` to become null and add a
+      `clearScreenshotRef()` method (FR-056) in
+      `backend/src/main/java/com/rivals/activity/ActivitySubmission.java` (depends on: T134)
+- [X] T137 [US2] Update `ActivityService.approve`/`reject` to call
+      `ScreenshotStorageService.delete` and `clearScreenshotRef()` immediately after the decision
+      (FR-056), in `backend/src/main/java/com/rivals/activity/ActivityService.java`
+      (depends on: T135, T136)
+- [X] T138 [US2] Update `ActivityService.getScreenshot` to throw `NotFoundException` when
+      `screenshotRef` is null (FR-057) in
+      `backend/src/main/java/com/rivals/activity/ActivityService.java` (depends on: T137)
+- [X] T139 [P] [US8] Rename `User.photoUrl` to `photoRef` and replace the combined
+      `updateProfile(photoUrl, quote)` with `updateQuote(quote)` and `updatePhotoRef(photoRef)`
+      (FR-049, FR-051) in `backend/src/main/java/com/rivals/user/User.java` (depends on: T134)
+- [X] T140 [P] [US8] Add an `UnauthorizedException` (401) and its `GlobalExceptionHandler` mapping
+      for a failed current-password check (FR-053) in
+      `backend/src/main/java/com/rivals/common/UnauthorizedException.java` and
+      `backend/src/main/java/com/rivals/config/GlobalExceptionHandler.java`
+- [X] T141 [P] [US8] Add a `ChangePasswordRequest` DTO (`@NotBlank` currentPassword,
+      `@NotBlank`/`@Size(min=8)` newPassword) per FR-052/FR-054 in
+      `backend/src/main/java/com/rivals/user/dto/ChangePasswordRequest.java`
+- [X] T142 [US8] Add `UserService.changePassword(userId, currentPassword, newPassword)`: reject
+      with `UnauthorizedException` if `PasswordEncoder.matches` fails on the current password
+      (FR-053), otherwise re-encode and save the new one (FR-052), in
+      `backend/src/main/java/com/rivals/user/UserService.java` (depends on: T140, T141)
+- [X] T143 [US8] Add `POST /api/users/me/password` to `UserController` (FR-050, FR-052) in
+      `backend/src/main/java/com/rivals/user/UserController.java` (depends on: T142)
+- [X] T144 [US8] Replace `UserService.updateMyProfile` with `updateMyQuote(userId, quote)` and
+      `updateMyPhoto(userId, MultipartFile)` (stores via `ScreenshotStorageService`, FR-051) plus
+      `getPhoto(userId)` (loads via the stored `photoRef`), and update `UpdateProfileRequest` to
+      carry only `quote` (photo is no longer settable via pasted URL, FR-051/FR-055), in
+      `backend/src/main/java/com/rivals/user/UserService.java` and
+      `backend/src/main/java/com/rivals/user/dto/UpdateProfileRequest.java`
+      (depends on: T139, T135)
+- [X] T145 [US8] Add `POST /api/users/me/photo` (multipart) and `GET /api/users/{id}/photo` to
+      `UserController` (FR-050, FR-051) in
+      `backend/src/main/java/com/rivals/user/UserController.java` (depends on: T144)
+- [X] T146 [US8] Update `UserService.getProfile` to compute `PublicProfileResponse.photoUrl` as
+      `/api/users/{id}/photo` when a `photoRef` is set, else `null` (FR-044) in
+      `backend/src/main/java/com/rivals/user/UserService.java` (depends on: T144)
+- [X] T147 [P] [US8] Update `contracts/users.md` (password-change and photo-upload/serve
+      endpoints, `UpdateProfileRequest` now quote-only) and `contracts/activities.md` (screenshot
+      endpoint's new 404-after-decision behavior) in `specs/001-core-features/contracts/`
+- [X] T148 [P] [US8] Add `changeMyPassword`, `uploadMyPhoto`, and `updateMyQuote` API client
+      functions and update the `UpdateProfileRequest`/add `ChangePasswordRequest` frontend types
+      in `frontend/src/api/users.ts` and `frontend/src/types/user.ts`
+- [X] T149 [US8] Build `AccountSettings.tsx` — a photo-upload control, a quote textarea, and a
+      change-password form (current password, new password, client-side 8-character check) — in
+      `frontend/src/pages/AccountSettings.tsx` (new page) (depends on: T148)
+- [X] T150 [US8] Wire `/settings` into `frontend/src/App.tsx` (inside `AppLayout`/`ProtectedRoute`)
+      and add a "Settings" nav entry to `frontend/src/components/Sidebar.tsx`
+      (depends on: T149)
+- [X] T151 Run `mvn -o clean compile` in `backend/` and `npm run typecheck`/`npm run lint`/
+      `npm run build` in `frontend/`, then verify `AccountSettings.tsx` (photo upload, quote,
+      password change) at the source level (depends on: T138, T150) — **not verified**: an actual
+      live round-trip (uploading a real photo, changing a real password, confirming a decided
+      submission's screenshot 404s), since that requires a local PostgreSQL instance with the V5
+      migration applied, not stood up for this session, the same limitation noted on every prior
+      phase's verification step
+
+**Checkpoint**: A signed-in user can fully manage their own profile photo, quote, and password from
+one page; a decided submission's screenshot is deleted and no longer retrievable by anyone.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -787,6 +994,17 @@ redirected to `/login`, without needing a pre-provisioned seed account.
   of US1-US5 and of Phases 10-12's presentation work, since it adds a new public route and a new
   auth endpoint rather than touching any existing page's business logic. Could have been built in
   parallel with any other phase; it was simply added last here because it was specified last.
+- **Squad-Strict Submissions & User Search (Phase 14, addendum)**: Depends on US1's
+  `ActivitySubmission` entity (T021), US3's `Squad`/`SquadMembership` entities (T034), and US4's
+  employee-directory search endpoint (T054, promoted here from Manager-only-in-practice to a
+  first-class global search per FR-043) — it adds columns to two existing tables and a new profile
+  endpoint on the existing `user` module rather than a new module. Independent of US2, US5, US6,
+  and Phases 10-12's presentation work.
+- **Account Settings & Screenshot Retention (Phase 15, addendum)**: Depends on US2's approve/reject
+  transition (T030) and Phase 14's `photo_url`/`photo_ref` column and `PublicProfileResponse`
+  (T113, T116, T120) — it renames that column and adds password/photo endpoints to the existing
+  `user` module, and adds a delete call to the existing `storage`/`activity` approve/reject flow.
+  Independent of US1, US3–US7, and Phases 10–13.
 
 ### Within Each User Story
 
@@ -797,7 +1015,9 @@ redirected to `/login`, without needing a pre-provisioned seed account.
   frontend-first and a backend-later step, and the endpoint's contract (three string fields in,
   `201`/`400`/`409` out) was simple enough that a throwaway mock would have added a file to delete
   immediately after, not genuine UI-first decoupling. This is a deliberate, narrow exception, not a
-  precedent for skipping Principle I on future stories.
+  precedent for skipping Principle I on future stories. Phase 14 follows the standard mock-first
+  order for its three touched/new pages (`Squads.tsx`, `SubmitActivity.tsx`,
+  `UserDirectory.tsx`/`UserProfile.tsx`).
 
 ### Parallel Opportunities
 
@@ -824,6 +1044,13 @@ redirected to `/login`, without needing a pre-provisioned seed account.
   the backend tasks and can start immediately. T105-T106 (controller, security config) and
   T109-T110 (Register page, App.tsx routing) are each sequential within their own side. T111 (the
   unrelated `AppLayout.tsx` typecheck fix) can happen any time before T112.
+- **Addendum (Phase 14, Squad-Strict Submissions & User Search)**: T114, T115, and T116 all depend
+  only on the T113 migration and touch different entities, so they run in parallel; T120 and T121
+  likewise run in parallel once T116 lands (different endpoints on the same controller file, but
+  additive, non-conflicting methods). On the frontend, T122/T124/T126 (mock-fixture updates, no
+  shared file) run in parallel; T127 and T128 (two new, independent page files) run in parallel once
+  T126 lands. The three "wire to live" tasks (T130, T131, T132) touch different pages and can be
+  split across developers once their respective backend tasks land.
 
 ---
 
@@ -876,6 +1103,13 @@ Task: "Create mock JSON fixtures for squad-members, invitations, and users in fr
 8. **Addendum**: User Story 6 (Phase 13) at any point after Foundational — validate against its own
    Independent Test (register → 201 → redirected to `/login`; duplicate email → 409; short
    password → 400).
+9. **Addendum**: Squad-Strict Submissions & User Search (Phase 14) once US1, US3, and US4 exist —
+   validate against its own Independent Test (no Join control anywhere; submission blocked with no
+   Squad membership and type-restricted by the selected Squad; profile detail gated on a shared
+   Squad).
+10. **Addendum**: Account Settings & Screenshot Retention (Phase 15) once US2 and Phase 14 exist —
+    validate against its own Independent Test (photo/quote update reflected on profile; password
+    change requires the correct current password; a decided submission's screenshot 404s).
 
 ### Addendum MVP (Group-Scoped Roles and Leaderboard Toggling)
 
@@ -965,3 +1199,63 @@ stories:
   logging in with the new credentials afterward), since that requires a local PostgreSQL instance
   with Flyway migrations applied — not stood up for this session, the same limitation noted on
   every prior phase's verification step.
+- **2026-09-04 addendum (fifth, same day)**: T113-T133 (Phase 14) were generated after spec.md
+  gained **Squad-Strict Submission Rules** and **System-Wide User Search** — squads become
+  invite-only with a per-squad allowed-activity-types list (revising User Story 3), activity
+  submission becomes Squad-scoped and type-restricted accordingly (revising User Story 1), and a
+  new **User Story 7 - Search Users and View Public Profiles** (P2) was added (FR-043–FR-049 plus
+  revisions to FR-001/FR-002/FR-010–FR-012/FR-015/FR-025, SC-014–SC-017). Unlike Phase 13, this
+  addendum revises two already-implemented stories rather than being purely additive, so T117
+  (removing `POST /api/squads/{id}/join`) and T123 (removing `Squads.tsx`'s Join button) are
+  deletions of previously-shipped functionality (T037, T038), not new endpoints/components — this
+  is the first addendum in this file to retire, rather than only extend, prior work. T113-T133 are
+  now complete: `V4__squad_strict_submissions_and_profiles.sql` adds
+  `squad_allowed_activity_types` (defaulting every pre-existing squad to all four types),
+  `activity_submissions.target_squad_id` (backfilled from each submitter's existing membership,
+  then `NOT NULL`), and `users.photo_url`/`users.quote`; `Squad`/`ActivitySubmission`/`User`
+  entities gained the corresponding fields; `POST /api/squads/{id}/join` and its `SquadService`
+  method were deleted outright (FR-010/FR-012); `POST /api/activities` now requires and validates
+  `targetSquadId` against the caller's membership and the squad's allowed types (`FR-047`/`FR-048`,
+  via a new `ActivitySubmissionValidator.validateTargetSquad`); the squad leaderboard's SQL now
+  sums `activity_submissions.target_squad_id`-tagged points instead of every member's cross-squad
+  total (FR-015); and `UserController`/`UserService` gained `GET /api/users/{id}/profile`
+  (FR-044/FR-045, shared-Squad detail gated on `SquadMembershipRepository` overlap) and
+  `PUT /api/users/me/profile` (FR-049). On the frontend, `Squads.tsx` dropped its Join button in
+  favor of a browse-only list (with an allowed-activity-types checkbox group on Create and a
+  Leave-only action for current members), `SubmitActivity.tsx` gained a required Squad selector
+  that dynamically filters the Activity Type dropdown and blocks submission entirely for a user
+  with no Squad membership, and two new pages — `UserDirectory.tsx` and `UserProfile.tsx` — were
+  added and wired into `App.tsx`/`Sidebar.tsx`. `contracts/squads.md`, `contracts/activities.md`,
+  `contracts/users.md`, and `contracts/leaderboards.md` were all updated to match. Verified: `mvn -o
+  clean compile` (59 backend source files, zero errors) and frontend `typecheck`/`lint`/`build`
+  all pass cleanly (lint's 3 warnings are the same pre-existing category as every prior phase).
+  **Not verified**: an actual live round-trip through the new/changed endpoints (creating a squad
+  with restricted types, submitting against it, confirming the squad leaderboard total reflects
+  only tagged submissions, viewing a profile with and without a shared Squad), since that requires
+  a local PostgreSQL instance with the V4 migration applied — not stood up for this session, the
+  same limitation noted on every prior phase's verification step.
+- **2026-09-04 addendum (seventh, same day)**: T134-T151 (Phase 15) were generated and implemented
+  after a `/speckit-clarify` session (prompted by the user asking why there was no way to change a
+  password or set a profile picture) added **User Story 8 - Manage Account Settings**, and a
+  separate user request added **Screenshot Retention**. T134-T151 are now complete:
+  `V5__account_settings_and_screenshot_retention.sql` renames `users.photo_url` to `photo_ref` and
+  relaxes `activity_submissions.screenshot_ref` to nullable; `ScreenshotStorageService` gained a
+  `delete` method; `ActivitySubmission` gained `clearScreenshotRef()`; `ActivityService.approve`/
+  `reject` now delete the screenshot file and clear the reference immediately after the decision,
+  and `getScreenshot` 404s once it is null; a new `UnauthorizedException` (401) and
+  `ChangePasswordRequest` DTO back `UserService.changePassword` (verifies the current password via
+  `PasswordEncoder.matches` before re-encoding a new one); `User.updateProfile` was split into
+  `updateQuote`/`updatePhotoRef`; `UserService.updateMyPhoto`/`getPhoto` reuse
+  `ScreenshotStorageService` for file-upload-based photos (FR-051); `UserController` gained
+  `POST /api/users/me/photo`, `GET /api/users/{id}/photo`, and `POST /api/users/me/password`, and
+  `PUT /api/users/me/profile`'s request now carries only `quote`. On the frontend, a new
+  `AccountSettings.tsx` page (photo upload, quote textarea, password-change form with client-side
+  8-character/confirmation checks) was built and wired into `App.tsx`/`Sidebar.tsx`; `api/users.ts`
+  gained `updateMyQuote`/`uploadMyPhoto`/`changeMyPassword`; `api/client.ts` gained `apiPut`.
+  `contracts/users.md` and `contracts/activities.md` were updated to match. Verified: `mvn -o clean
+  compile` (61 backend source files, zero errors) and frontend `typecheck`/`lint`/`build` all pass
+  cleanly (same pre-existing lint warnings as every prior phase, no new ones). **Not verified**: an
+  actual live round-trip (uploading a real photo file, changing a real password end-to-end,
+  confirming a decided submission's screenshot endpoint returns 404 against a live database), since
+  that requires a local PostgreSQL instance with the V5 migration applied — not stood up for this
+  session, the same limitation noted on every prior phase's verification step.

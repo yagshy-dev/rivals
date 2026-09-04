@@ -39,24 +39,22 @@ public class LeaderboardRepository {
 
     /**
      * FR-014, FR-015, FR-017 tie-break, research.md #7 zero-member handling: a squad's total is
-     * the sum of its current members' approved points, average is total / member count (0 when
-     * there are no members, which also naturally sorts it last in an average-descending order).
+     * the sum of the Approved points of submissions tagged to that squad (2026-09-04 addendum —
+     * previously every current member's cross-squad total), average is total / member count (0
+     * when there are no members, which also naturally sorts it last in an average-descending
+     * order).
      */
     public List<UnrankedSquadRow> findSquadLeaderboard(String orderColumn, int limit, long offset) {
         String sql = """
-                SELECT sq.id AS squad_id, sq.name AS name, COUNT(sm.user_id) AS member_count,
-                       COALESCE(SUM(member_points.total_points), 0) AS total_points,
-                       CASE WHEN COUNT(sm.user_id) = 0 THEN 0
-                            ELSE COALESCE(SUM(member_points.total_points), 0) / COUNT(sm.user_id)
+                SELECT sq.id AS squad_id, sq.name AS name, COUNT(DISTINCT sm.user_id) AS member_count,
+                       COALESCE(SUM(s.points_awarded), 0) AS total_points,
+                       CASE WHEN COUNT(DISTINCT sm.user_id) = 0 THEN 0
+                            ELSE COALESCE(SUM(s.points_awarded), 0) / COUNT(DISTINCT sm.user_id)
                        END AS average_points
                 FROM squads sq
                 LEFT JOIN squad_memberships sm ON sm.squad_id = sq.id
-                LEFT JOIN (
-                    SELECT user_id, SUM(points_awarded) AS total_points
-                    FROM activity_submissions
-                    WHERE status = 'APPROVED'
-                    GROUP BY user_id
-                ) member_points ON member_points.user_id = sm.user_id
+                LEFT JOIN activity_submissions s
+                    ON s.target_squad_id = sq.id AND s.status = 'APPROVED'
                 GROUP BY sq.id, sq.name
                 ORDER BY %s DESC, sq.name ASC
                 LIMIT ? OFFSET ?

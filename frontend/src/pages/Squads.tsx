@@ -1,15 +1,25 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Search, Swords } from "lucide-react";
-import { createSquad, joinSquad, leaveSquad, searchSquads } from "../api/squads";
+import { createSquad, leaveSquad, searchSquads } from "../api/squads";
 import { isApiError } from "../api/auth";
 import { Icon } from "../components/Icon";
-import type { SquadSummaryResponse } from "../types";
+import type { ActivityType, SquadSummaryResponse } from "../types";
+
+const ACTIVITY_TYPES: { value: ActivityType; label: string }[] = [
+  { value: "RUNNING", label: "Running" },
+  { value: "CYCLING", label: "Cycling" },
+  { value: "SWIMMING", label: "Swimming" },
+  { value: "YOGA", label: "Yoga" },
+];
 
 export function Squads() {
   const [search, setSearch] = useState("");
   const [squads, setSquads] = useState<SquadSummaryResponse[] | null>(null);
   const [newSquadName, setNewSquadName] = useState("");
+  const [newSquadTypes, setNewSquadTypes] = useState<Set<ActivityType>>(
+    () => new Set(ACTIVITY_TYPES.map((t) => t.value)),
+  );
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -26,30 +36,40 @@ export function Squads() {
     load(search);
   }
 
+  function toggleNewSquadType(type: ActivityType) {
+    setNewSquadTypes((current) => {
+      const next = new Set(current);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  }
+
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     setError(null);
     try {
-      await createSquad(newSquadName);
+      await createSquad(newSquadName, Array.from(newSquadTypes));
       setNewSquadName("");
+      setNewSquadTypes(new Set(ACTIVITY_TYPES.map((t) => t.value)));
       load(search);
     } catch (err) {
       setError(isApiError(err) ? err.response.message : "Failed to create squad");
     }
   }
 
-  async function handleToggleMembership(squad: SquadSummaryResponse) {
+  /** FR-012: leaving remains self-service; joining is invite-only (User Story 4). */
+  async function handleLeave(squad: SquadSummaryResponse) {
     setBusyId(squad.id);
     setError(null);
     try {
-      if (squad.isCurrentUserMember) {
-        await leaveSquad(squad.id);
-      } else {
-        await joinSquad(squad.id);
-      }
+      await leaveSquad(squad.id);
       load(search);
     } catch (err) {
-      setError(isApiError(err) ? err.response.message : "Failed to update membership");
+      setError(isApiError(err) ? err.response.message : "Failed to leave squad");
     } finally {
       setBusyId(null);
     }
@@ -62,21 +82,44 @@ export function Squads() {
         <h1 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">Squads</h1>
       </div>
 
-      <form onSubmit={handleCreate} className="mb-4 flex gap-2">
-        <input
-          type="text"
-          placeholder="New squad name"
-          value={newSquadName}
-          onChange={(e) => setNewSquadName(e.target.value)}
-          required
-          className="flex-1 rounded-lg border border-zinc-800/80 bg-[#121214] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400"
-        >
-          Create
-        </button>
+      <form
+        onSubmit={handleCreate}
+        className="mb-4 flex flex-col gap-3 rounded-2xl border border-zinc-800/60 bg-[#121214] p-4"
+      >
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="New squad name"
+            value={newSquadName}
+            onChange={(e) => setNewSquadName(e.target.value)}
+            required
+            className="flex-1 rounded-lg border border-zinc-800/80 bg-[#0a0a0b] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400"
+          >
+            Create
+          </button>
+        </div>
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            Allowed activity types
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {ACTIVITY_TYPES.map((t) => (
+              <label key={t.value} className="flex items-center gap-1.5 text-sm text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={newSquadTypes.has(t.value)}
+                  onChange={() => toggleNewSquadType(t.value)}
+                  className="accent-orange-500"
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </div>
       </form>
 
       <form onSubmit={handleSearchSubmit} className="mb-4 flex gap-2">
@@ -131,19 +174,26 @@ export function Squads() {
                 {squad.memberCount} members
                 {squad.currentUserRole ? ` · ${squad.currentUserRole}` : ""}
               </p>
+              <p className="text-xs text-zinc-500">
+                Allows: {squad.allowedActivityTypes.join(", ")}
+              </p>
             </div>
-            <button
-              type="button"
-              disabled={busyId === squad.id}
-              onClick={() => void handleToggleMembership(squad)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
-                squad.isCurrentUserMember
-                  ? "bg-red-500/15 text-red-500 hover:bg-red-500 hover:text-white"
-                  : "bg-orange-500 text-black hover:bg-orange-400"
-              }`}
-            >
-              {squad.isCurrentUserMember ? "Leave" : "Join"}
-            </button>
+            {/* FR-010, FR-012: squads are invite-only — no self-service "Join" control is ever
+                offered here, only "Leave" for a squad the caller already belongs to. */}
+            {squad.isCurrentUserMember ? (
+              <button
+                type="button"
+                disabled={busyId === squad.id}
+                onClick={() => void handleLeave(squad)}
+                className="rounded-full bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50"
+              >
+                Leave
+              </button>
+            ) : (
+              <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                Invite-only
+              </p>
+            )}
           </li>
         ))}
       </ul>

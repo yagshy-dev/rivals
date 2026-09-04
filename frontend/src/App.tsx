@@ -11,6 +11,9 @@ import { Squads } from "./pages/Squads";
 import { SquadDetail } from "./pages/SquadDetail";
 import { Invitations } from "./pages/Invitations";
 import { Leaderboards } from "./pages/Leaderboards";
+import { UserDirectory } from "./pages/UserDirectory";
+import { UserProfile } from "./pages/UserProfile";
+import { AccountSettings } from "./pages/AccountSettings";
 
 export function App() {
   return (
@@ -33,6 +36,9 @@ export function App() {
               <Route path="/squads/:id" element={<SquadDetail />} />
               <Route path="/invitations" element={<Invitations />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
+              <Route path="/directory" element={<UserDirectory />} />
+              <Route path="/users/:id" element={<UserProfile />} />
+              <Route path="/settings" element={<AccountSettings />} />
             </Route>
 
             {/* Admin Pages */}

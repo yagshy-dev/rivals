@@ -4,6 +4,7 @@ import com.rivals.common.ConflictException;
 import com.rivals.common.ErrorResponse;
 import com.rivals.common.ForbiddenException;
 import com.rivals.common.NotFoundException;
+import com.rivals.common.UnauthorizedException;
 import com.rivals.common.ValidationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -59,6 +60,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ErrorResponse.of(401, "UNAUTHENTICATED", "Invalid email or password"));
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(401, "UNAUTHENTICATED", ex.getMessage()));
     }
 
     @ExceptionHandler(NotFoundException.class)
