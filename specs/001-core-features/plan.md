@@ -16,10 +16,21 @@ leaderboard, a group leaderboard sortable by total or average points per member,
 selector to switch the individual leaderboard between the Global view and any squad the user
 belongs to; (6, addendum) a prospective employee can self-register a new account (email, display
 name, password) via a public, unauthenticated page, which creates the account with the standard
-employee role and a securely hashed password, then redirects to the login page. Technical
-approach: a Spring Boot 3 (Java 17) REST API backed by local PostgreSQL, a React 18 + TypeScript
-(Vite, Tailwind) SPA built UI-first against checked-in mock JSON fixtures before wiring to the real
-API, all developed and run via Windows PowerShell with no Docker.
+employee role and a securely hashed password, then redirects to the login page; (7, addendum)
+squads become strictly invite-only (no self-service join), each squad now declares an allowed
+subset of the four activity types (defaulting to all four), every activity submission must name a
+target Squad the submitter belongs to and is restricted to that Squad's allowed types, squad point
+totals are computed from submissions tagged to that squad, and a global employee directory search
+lets any user open any other user's public profile (photo, quote, Global Average), revealing
+Squad-specific detail only when the viewer shares a Squad with that profile's owner; (8, addendum)
+a signed-in user manages their own profile photo (file upload), personal quote, and password from a
+single Account Settings page, with a password change requiring the current password and a new
+password meeting the same minimum length as registration; (9, addendum) an activity submission's
+screenshot is deleted from storage as soon as an admin approves or rejects it, since it exists only
+to support the review itself. Technical approach: a Spring Boot 3 (Java 17) REST API backed by
+local PostgreSQL, a React 18 + TypeScript (Vite, Tailwind) SPA built UI-first against checked-in
+mock JSON fixtures before wiring to the real API, all developed and run via Windows PowerShell with
+no Docker.
 
 ## Technical Context
 
@@ -59,10 +70,13 @@ that fills the viewport, pins the sidebar left, and scrolls page content indepen
 right, Lucide React icons forced to `stroke-width: 2.5`, and neon status badges (electric green
 Approved / crimson red Rejected / a third distinct vivid color for Pending)
 
-**Scale/Scope**: Single internal company deployment; 5 user-facing capabilities (activity
-submission, admin review/points, squads with group-scoped roles and invitations, leaderboards with
-a Global/squad toggle) across roughly 8-12 screens/views, all restyled to the mandatory dark,
-sidebar-navigated, Apple/macOS-inspired rounded design system and wrapped in the shared `AppLayout`
+**Scale/Scope**: Single internal company deployment; 9 user-facing capabilities (registration,
+squad-scoped activity submission with time-limited screenshot retention, admin review/points,
+invite-only squads with group-scoped roles and per-squad allowed activity types, leaderboards with
+a Global/squad toggle, a global user directory with public profiles, and self-service account
+settings) across roughly 11-15 screens/views, all restyled to the mandatory dark, sidebar-navigated,
+Apple/macOS-inspired rounded design system and wrapped in the shared `AppLayout` (except the public
+Login/Register pages)
 
 ## Constitution Check
 
@@ -121,6 +135,35 @@ Principle II (Strict Type Safety) still holds: `RegisterRequest` is an explicit 
 with `@Valid`, never the `User` entity, at the controller boundary. All gates PASS. No violations
 identified.
 
+*Post-Phase 1 re-check (Squad-Strict Submissions & User Search, 2026-09-04)*: spec.md gained
+**Squad-Strict Submission Rules** (FR-001/FR-002/FR-010–FR-012/FR-015/FR-025/FR-046–FR-048 revised
+or added) and **User Story 7 - Search Users and View Public Profiles** (FR-043–FR-045, FR-049,
+SC-014–SC-017). This extends the existing `squad`, `activity`, and `user` modules rather than
+introducing a new module or database: `Squad` gains an `allowedActivityTypes` column,
+`ActivitySubmission` gains a required `targetSquadId` column, and `user/` gains a directory-search
+endpoint and a public-profile read endpoint reusing the existing `UserRepository`/`SquadMembership`
+data (Principle V: no new dependency). Removing self-service squad joining is a controller/route
+deletion, not a new concern. Principle IV (Human-in-the-Loop Approval) is unaffected: the points
+engine still only runs at admin-approval time — the only change is that a submission's points are
+now attributed to its tagged Squad rather than to every Squad the user happens to belong to.
+Principle II (Strict Type Safety) still holds: the new `SubmitActivityRequest` field and the new
+`UserSearchResult`/`PublicProfile` DTOs are explicit records, never entities, at the controller
+boundary. All gates PASS. No violations identified.
+
+*Post-Phase 1 re-check (Account Settings & Screenshot Retention, 2026-09-04)*: spec.md gained
+**User Story 8 - Manage Account Settings** (FR-050–FR-055, SC-018–SC-019) and **Screenshot
+Retention** (FR-018 revised, FR-056–FR-057, SC-020). Both extend existing modules rather than
+introducing new ones: `user/` gains a password-change endpoint (reusing the existing
+`PasswordEncoder` bean) and a photo-upload/serve pair of endpoints reusing the existing
+`ScreenshotStorageService` (renamed in spirit, not code, to a general file-storage adapter —
+Principle V: no new dependency or storage technology); `activity/`'s `ActivityService` now calls
+that same storage service's new `delete` method from the existing approve/reject transition,
+immediately after the points engine runs. Principle IV (Human-in-the-Loop Approval) is unaffected:
+screenshot deletion happens strictly after — never instead of, or in place of — the admin's
+approve/reject decision, and does not touch point calculation. Principle II (Strict Type Safety)
+still holds: `ChangePasswordRequest` is a new explicit record validated with `@Valid`, never the
+`User` entity, at the controller boundary. All gates PASS. No violations identified.
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -141,12 +184,20 @@ specs/001-core-features/
 backend/
 ├── src/main/java/com/rivals/
 │   ├── user/            # User entity, repository, controller, DTOs, incl. AuthController's
-│   │                     # POST /api/auth/register and UserService.register (FR-036–FR-041)
-│   ├── activity/         # ActivitySubmission entity, repository, controller, DTOs, validation
+│   │                     # POST /api/auth/register and UserService.register (FR-036–FR-041), the
+│   │                     # global directory search and public-profile endpoints
+│   │                     # (FR-043–FR-045, FR-049), and Account Settings' password-change
+│   │                     # (FR-052–FR-054) and photo-upload/serve endpoints (FR-051)
+│   ├── activity/         # ActivitySubmission entity (incl. required targetSquadId, FR-047, and a
+│   │                      # nullable screenshotRef post-decision, FR-056), repository, controller,
+│   │                      # DTOs, validation (incl. Squad-membership and Squad-allowed-type
+│   │                      # checks, FR-002/FR-048)
 │   ├── points/            # ActivityPointRate lookup + points calculation, invoked only on approval
-│   ├── squad/             # Squad + SquadMembership (with role) + SquadInvitation entities, repository, controller, DTOs
+│   ├── squad/             # Squad (incl. allowedActivityTypes, FR-046) + SquadMembership (with
+│   │                       # role) + SquadInvitation entities, repository, controller, DTOs
 │   ├── leaderboard/        # Read-only leaderboard queries/controller (individual, squad, and squad-scoped individual; total/average)
-│   ├── storage/            # Local-filesystem screenshot storage adapter
+│   ├── storage/            # Local-filesystem file storage adapter (screenshots and, per the
+│   │                        # Account Settings addendum, profile photos — same adapter, FR-051)
 │   ├── config/              # Security, web, storage configuration
 │   └── RivalsApplication.java
 ├── src/main/resources/
@@ -167,8 +218,16 @@ frontend/
 │   │                              # the master layout every page is wrapped in), Sidebar.tsx
 │   │                              # (UX-002), and StatusBadge.tsx (UX-005, neon Approved/Rejected/Pending)
 │   ├── pages/                     # Login, Register (both public, outside AppLayout — UX-006),
-│   │                              # ActivitySubmit, AdminReviewQueue, Squads, SquadDetail
-│   │                              # (members/roles/invite), Invitations, Leaderboards (Global/squad selector)
+│   │                              # ActivitySubmit (target-Squad selector + dynamically-filtered
+│   │                              # Activity Type dropdown, FR-047/FR-048), AdminReviewQueue,
+│   │                              # Squads (browse-only directory, no Join control, FR-010),
+│   │                              # SquadDetail (members/roles/invite/allowed-types),
+│   │                              # Invitations, Leaderboards (Global/squad selector),
+│   │                              # UserDirectory (global name search, FR-043),
+│   │                              # UserProfile (public photo/quote/Global Average, plus
+│   │                              # shared-Squad detail, FR-044/FR-045),
+│   │                              # AccountSettings (photo upload, quote, password change,
+│   │                              # FR-050–FR-055)
 │   └── App.tsx / main.tsx
 ├── index.html
 ├── vite.config.ts
@@ -200,4 +259,27 @@ User Registration addition, `App.tsx` gains a `/register` route as a sibling of 
 outside `AppLayout`'s `<Route>`, matching UX-006's public-page carve-out), backed by a new
 `frontend/src/pages/Register.tsx` built from `Login.tsx`'s existing markup/styling, and by a new
 `POST /api/auth/register` endpoint in the existing `backend/.../user/` module — no new backend
-module, migration, or frontend framework is introduced.
+module, migration, or frontend framework is introduced. Per the same-day Squad-Strict Submissions &
+User Search addition: `backend/.../squad/`'s `Squad` entity gains an `allowedActivityTypes` column
+(Flyway migration, defaulting existing rows to all four types) and its controller drops the
+self-service join endpoint; `backend/.../activity/`'s `ActivitySubmission` entity gains a required
+`targetSquadId` column (also via migration) and its submission validation now checks the submitter's
+Squad membership and that Squad's allowed types; `backend/.../user/` gains a directory-search
+endpoint and a public-profile endpoint that conditionally includes Squad-specific detail based on
+shared membership. On the frontend, `ActivitySubmit.tsx` gains a required Squad selector that
+dynamically filters the Activity Type dropdown, `Squads.tsx` drops its "Join" control in favor of a
+read-only browse list, and two new pages — `UserDirectory.tsx` and `UserProfile.tsx` — are added
+under `frontend/src/pages/`, both authenticated routes wrapped in the existing `AppLayout` (UX-006)
+like every other signed-in page. No new backend module, frontend framework, or database is
+introduced. Per the same-day Account Settings & Screenshot Retention addition:
+`backend/.../user/dto/ChangePasswordRequest.java` is a new explicit record; `UserController` gains
+`POST /api/users/me/password`, `POST /api/users/me/photo` (multipart, reusing
+`ScreenshotStorageService`), and `GET /api/users/{id}/photo`; `backend/.../user/User.java`'s
+`photo_url` column is renamed `photo_ref` (it now stores a storage reference, not a pasted URL,
+per FR-051) via a new Flyway migration that also relaxes `activity_submissions.screenshot_ref` to
+nullable; `ActivityService`'s approve/reject transition gains a call to
+`ScreenshotStorageService.delete` immediately after the points engine runs, and
+`ActivityService.getScreenshot` now 404s once `screenshotRef` is null. On the frontend, a new
+`frontend/src/pages/AccountSettings.tsx` is added (photo upload, quote textarea, password-change
+form) and wired into `App.tsx`/`Sidebar.tsx` alongside the other authenticated pages. No new
+backend module, frontend framework, or database is introduced.

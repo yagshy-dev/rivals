@@ -5,12 +5,15 @@ import type {
   PendingSubmissionResponse,
 } from "../types";
 
+/** FR-047, FR-048: every submission names the target Squad it counts toward. */
 export async function submitActivity(
+  targetSquadId: string,
   activityType: ActivityType,
   metricValue: number,
   screenshot: File,
 ): Promise<ActivitySubmissionResponse> {
   const form = new FormData();
+  form.append("targetSquadId", targetSquadId);
   form.append("activityType", activityType);
   form.append("metricValue", String(metricValue));
   form.append("screenshot", screenshot);

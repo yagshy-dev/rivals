@@ -1,3 +1,5 @@
+import type { ActivityType } from "./activity";
+
 export type SquadRole = "MANAGER" | "MEMBER";
 
 export interface SquadSummaryResponse {
@@ -6,6 +8,7 @@ export interface SquadSummaryResponse {
   memberCount: number;
   isCurrentUserMember: boolean;
   currentUserRole: SquadRole | null;
+  allowedActivityTypes: ActivityType[];
 }
 
 export interface SquadMemberResponse {

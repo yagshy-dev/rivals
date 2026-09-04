@@ -35,14 +35,15 @@ public class ActivityService {
         this.pointsEngine = pointsEngine;
     }
 
-    /** FR-001, FR-002, FR-003. */
+    /** FR-001, FR-002, FR-003, FR-047, FR-048. */
     @Transactional
-    public ActivitySubmissionResponse submit(UUID userId, ActivityType activityType, BigDecimal metricValue,
-            MultipartFile screenshot) {
+    public ActivitySubmissionResponse submit(UUID userId, UUID targetSquadId, ActivityType activityType,
+            BigDecimal metricValue, MultipartFile screenshot) {
         validator.validateMetricValue(metricValue);
+        validator.validateTargetSquad(targetSquadId, activityType, userId);
         String screenshotRef = storageService.store(screenshot);
         ActivitySubmission submission = new ActivitySubmission(
-                UUID.randomUUID(), userId, activityType, metricValue, screenshotRef, Instant.now());
+                UUID.randomUUID(), userId, targetSquadId, activityType, metricValue, screenshotRef, Instant.now());
         submissionRepository.save(submission);
         return ActivitySubmissionResponse.from(submission);
     }
@@ -61,34 +62,43 @@ public class ActivityService {
                 .toList();
     }
 
-    /** FR-018: only the submitting user or an admin may view the screenshot. */
+    /** FR-018, FR-057: only the submitting user or an admin may view the screenshot, and only
+     * while it still exists — it is deleted the moment the submission is decided (FR-056). */
     public ScreenshotStorageService.StoredFile getScreenshot(UUID submissionId, UUID requesterId, Role requesterRole) {
         ActivitySubmission submission = findOrThrow(submissionId);
         boolean isOwner = submission.getUserId().equals(requesterId);
         boolean isAdmin = requesterRole == Role.ADMIN;
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isAdmin || submission.getScreenshotRef() == null) {
             throw new NotFoundException("Screenshot not found");
         }
         return storageService.load(submission.getScreenshotRef());
     }
 
-    /** FR-005, FR-006, FR-008, FR-019. */
+    /** FR-005, FR-006, FR-008, FR-019, FR-056. */
     @Transactional
     public ActivitySubmissionResponse approve(UUID submissionId, UUID adminId) {
         ActivitySubmission submission = findOrThrow(submissionId);
         BigDecimal points = pointsEngine.calculate(submission.getActivityType(), submission.getMetricValue());
         submission.approve(adminId, points, Instant.now());
+        deleteScreenshot(submission);
         submissionRepository.save(submission);
         return ActivitySubmissionResponse.from(submission);
     }
 
-    /** FR-005, FR-007, FR-008, FR-019. */
+    /** FR-005, FR-007, FR-008, FR-019, FR-056. */
     @Transactional
     public ActivitySubmissionResponse reject(UUID submissionId, UUID adminId) {
         ActivitySubmission submission = findOrThrow(submissionId);
         submission.reject(adminId, Instant.now());
+        deleteScreenshot(submission);
         submissionRepository.save(submission);
         return ActivitySubmissionResponse.from(submission);
+    }
+
+    /** FR-056: a decided submission's screenshot has served its purpose and is not retained. */
+    private void deleteScreenshot(ActivitySubmission submission) {
+        storageService.delete(submission.getScreenshotRef());
+        submission.clearScreenshotRef();
     }
 
     private ActivitySubmission findOrThrow(UUID submissionId) {

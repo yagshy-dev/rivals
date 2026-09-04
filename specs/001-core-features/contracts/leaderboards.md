@@ -50,4 +50,8 @@ frontend can render either column without a second request; only the row order (
 changes with `sortBy` (FR-014). A squad with `memberCount: 0` has `averagePoints: 0` and sorts
 last under `sortBy=average` (research.md #7).
 
+**2026-09-04 addendum (Squad-Strict Submission Rules)**: `totalPoints` is now the sum of Approved
+points from submissions **tagged to that squad** (FR-015, FR-047) — previously it summed every
+current member's cross-squad total. The response shape and `sortBy` semantics are unchanged.
+
 **Response 400**: `VALIDATION_ERROR` if `sortBy` is present but not `total` or `average`.

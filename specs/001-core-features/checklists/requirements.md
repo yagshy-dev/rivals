@@ -92,3 +92,33 @@
   marker was needed: email-verification scope, password minimum length, and display-name
   uniqueness were resolved with reasonable defaults recorded in Assumptions rather than treated as
   blocking ambiguities. Re-validated: all checklist items still pass.
+- 2026-09-04 update (Squad-Strict Submission Rules & System-Wide User Search): added a new
+  Clarifications session recording 5 stakeholder decisions, revised User Story 1 (submission is now
+  Squad-scoped) and User Story 3 (renamed to squad creation only — self-service joining removed),
+  added **User Story 7 - Search Users and View Public Profiles** (P2) with 5 acceptance scenarios,
+  7 new Edge Cases, FR-043–FR-049 (plus revisions to FR-001/FR-002/FR-010–FR-012/FR-015/FR-025),
+  SC-014–SC-017, and updated the User/Squad/Activity Submission/Squad Membership Key Entities and
+  Assumptions accordingly (Global Average definition, allowed-activity-types editability/default,
+  optional photo/quote). No [NEEDS CLARIFICATION] marker was needed — the stakeholder's five numbered
+  points were each a direct, unambiguous rule; remaining gaps (e.g., whether allowed activity types
+  can be edited after squad creation, what "Global Average" precisely means) were resolved with
+  reasonable defaults recorded in Assumptions. Re-validated: all checklist items still pass; no
+  implementation-detail leakage introduced outside the pre-existing UI/UX Design System exception.
+- 2026-09-04 clarify session (Account Settings): the user asked why there was no way to change a
+  password or set a profile picture from the UI — a genuine gap, since FR-049 only established the
+  data-level capability with no page to use it and password-change had never been specified at all.
+  Resolved 5 ambiguities via `/speckit-clarify`: (1) a single combined "Account Settings" page
+  covers photo, quote, and password together rather than splitting them across pages; (2) the
+  profile photo is set via file upload (reusing the existing screenshot-storage pattern), not a
+  pasted URL; (3) a password change requires re-entering the current password; (4) the new
+  password follows the same 8-character minimum as registration, no added complexity rules; (5)
+  display name and email are explicitly out of scope for this page. Added **User Story 8 - Manage
+  Account Settings** (P2) with 6 acceptance scenarios, 3 new Edge Cases, FR-050–FR-055,
+  SC-018–SC-019, and updated the **User** Key Entity and Assumptions accordingly. Re-validated: no
+  [NEEDS CLARIFICATION] markers remain; all checklist items still pass.
+- 2026-09-04 update (Screenshot Retention): the user requested that activity screenshots be
+  deleted after admin review to avoid retaining unneeded storage. Added a Clarifications decision,
+  a 7th User Story 2 acceptance scenario, a new Edge Case, FR-056–FR-057 (plus a revision to
+  FR-018 scoping screenshot access to the Pending window), SC-020, and an Assumptions entry. This
+  was a direct, unambiguous stakeholder instruction, not an ambiguity, so no `/speckit-clarify`
+  question was needed. Re-validated: all checklist items still pass.

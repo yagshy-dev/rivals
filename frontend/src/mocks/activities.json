@@ -1,6 +1,7 @@
 [
   {
     "id": "11111111-1111-1111-1111-111111111111",
+    "targetSquadId": "55555555-5555-5555-5555-555555555555",
     "activityType": "RUNNING",
     "metricValue": 5,
     "status": "PENDING",
@@ -9,6 +10,7 @@
   },
   {
     "id": "22222222-2222-2222-2222-222222222222",
+    "targetSquadId": "66666666-6666-6666-6666-666666666666",
     "activityType": "CYCLING",
     "metricValue": 20,
     "status": "APPROVED",
@@ -17,6 +19,7 @@
   },
   {
     "id": "33333333-3333-3333-3333-333333333333",
+    "targetSquadId": "66666666-6666-6666-6666-666666666666",
     "activityType": "YOGA",
     "metricValue": 30,
     "status": "REJECTED",

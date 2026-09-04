@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public record ActivitySubmissionResponse(
         UUID id,
+        UUID targetSquadId,
         ActivityType activityType,
         BigDecimal metricValue,
         SubmissionStatus status,
@@ -18,6 +19,7 @@ public record ActivitySubmissionResponse(
     public static ActivitySubmissionResponse from(ActivitySubmission submission) {
         return new ActivitySubmissionResponse(
                 submission.getId(),
+                submission.getTargetSquadId(),
                 submission.getActivityType(),
                 submission.getMetricValue(),
                 submission.getStatus(),

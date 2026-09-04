@@ -33,11 +33,12 @@ public class ActivityController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ActivitySubmissionResponse> submit(
             @AuthenticationPrincipal AppUserPrincipal principal,
+            @RequestParam UUID targetSquadId,
             @RequestParam ActivityType activityType,
             @RequestParam BigDecimal metricValue,
             @RequestParam MultipartFile screenshot) {
         ActivitySubmissionResponse response =
-                activityService.submit(principal.getId(), activityType, metricValue, screenshot);
+                activityService.submit(principal.getId(), targetSquadId, activityType, metricValue, screenshot);
         return ResponseEntity.status(201).body(response);
     }
 

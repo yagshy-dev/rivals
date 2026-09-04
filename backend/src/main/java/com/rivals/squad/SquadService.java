@@ -1,5 +1,6 @@
 package com.rivals.squad;
 
+import com.rivals.activity.ActivityType;
 import com.rivals.common.ConflictException;
 import com.rivals.common.ForbiddenException;
 import com.rivals.common.NotFoundException;
@@ -10,8 +11,10 @@ import com.rivals.squad.dto.SquadSummaryResponse;
 import com.rivals.user.User;
 import com.rivals.user.UserRepository;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Sort;
@@ -70,30 +73,26 @@ public class SquadService {
                 .toList();
     }
 
-    /** FR-011, FR-020: creator becomes the first member, with role Manager; name is unique case-insensitively. */
+    /**
+     * FR-011, FR-020, FR-046: creator becomes the first member, with role Manager; name is unique
+     * case-insensitively. {@code allowedActivityTypes} defaults to all four types when null/empty.
+     */
     @Transactional
-    public SquadSummaryResponse create(String name, UUID creatorId) {
+    public SquadSummaryResponse create(String name, Set<ActivityType> allowedActivityTypes, UUID creatorId) {
         if (squadRepository.findByNameIgnoreCase(name).isPresent()) {
             throw new ConflictException("A squad named '" + name + "' already exists");
         }
-        Squad squad = new Squad(UUID.randomUUID(), name, creatorId, Instant.now());
+        Set<ActivityType> normalizedTypes = allowedActivityTypes == null || allowedActivityTypes.isEmpty()
+                ? EnumSet.allOf(ActivityType.class)
+                : EnumSet.copyOf(allowedActivityTypes);
+        Squad squad = new Squad(UUID.randomUUID(), name, creatorId, Instant.now(), normalizedTypes);
         squadRepository.save(squad);
         membershipRepository.save(
                 new SquadMembership(UUID.randomUUID(), creatorId, squad.getId(), SquadRole.MANAGER, Instant.now()));
         return SquadSummaryResponse.of(squad, 1, true, SquadRole.MANAGER);
     }
 
-    /** FR-012, FR-025: idempotent-safe join; a self-service join always grants role Member. */
-    @Transactional
-    public SquadSummaryResponse join(UUID squadId, UUID userId) {
-        Squad squad = findOrThrow(squadId);
-        SquadMembership membership = membershipRepository.findByUserIdAndSquadId(userId, squadId)
-                .orElseGet(() -> membershipRepository.save(
-                        new SquadMembership(UUID.randomUUID(), userId, squadId, SquadRole.MEMBER, Instant.now())));
-        return SquadSummaryResponse.of(squad, membershipRepository.countBySquadId(squadId), true, membership.getRole());
-    }
-
-    /** FR-012. */
+    /** FR-012. Leaving remains available; joining is invite-only (see {@link #invite}, {@link InvitationService}). */
     @Transactional
     public SquadSummaryResponse leave(UUID squadId, UUID userId) {
         Squad squad = findOrThrow(squadId);

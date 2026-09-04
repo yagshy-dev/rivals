@@ -1,5 +1,10 @@
 import { apiGet, apiPost } from "./client";
-import type { SquadInvitationResponse, SquadMemberResponse, SquadSummaryResponse } from "../types";
+import type {
+  ActivityType,
+  SquadInvitationResponse,
+  SquadMemberResponse,
+  SquadSummaryResponse,
+} from "../types";
 
 export function searchSquads(search: string, mine = false): Promise<SquadSummaryResponse[]> {
   const params = new URLSearchParams();
@@ -13,14 +18,15 @@ export function searchSquads(search: string, mine = false): Promise<SquadSummary
   return apiGet<SquadSummaryResponse[]>(`/squads${query ? `?${query}` : ""}`);
 }
 
-export function createSquad(name: string): Promise<SquadSummaryResponse> {
-  return apiPost<SquadSummaryResponse>("/squads", { name });
+/** FR-011, FR-046: `allowedActivityTypes` defaults to all four on the server when omitted/empty. */
+export function createSquad(
+  name: string,
+  allowedActivityTypes?: ActivityType[],
+): Promise<SquadSummaryResponse> {
+  return apiPost<SquadSummaryResponse>("/squads", { name, allowedActivityTypes });
 }
 
-export function joinSquad(id: string): Promise<SquadSummaryResponse> {
-  return apiPost<SquadSummaryResponse>(`/squads/${id}/join`);
-}
-
+/** FR-012. Squads are invite-only (see `inviteToSquad`) — there is no self-service join. */
 export function leaveSquad(id: string): Promise<SquadSummaryResponse> {
   return apiPost<SquadSummaryResponse>(`/squads/${id}/leave`);
 }
