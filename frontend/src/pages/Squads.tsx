@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { Search, Swords } from "lucide-react";
 import { createSquad, joinSquad, leaveSquad, searchSquads } from "../api/squads";
 import { isApiError } from "../api/auth";
+import { Icon } from "../components/Icon";
 import type { SquadSummaryResponse } from "../types";
 
 export function Squads() {
@@ -55,7 +57,10 @@ export function Squads() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">Squads</h1>
+      <div className="mb-5 flex items-center gap-3">
+        <Icon icon={Swords} className="h-6 w-6 text-orange-500" />
+        <h1 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">Squads</h1>
+      </div>
 
       <form onSubmit={handleCreate} className="mb-4 flex gap-2">
         <input
@@ -64,11 +69,11 @@ export function Squads() {
           value={newSquadName}
           onChange={(e) => setNewSquadName(e.target.value)}
           required
-          className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-zinc-800/80 bg-[#121214] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
         />
         <button
           type="submit"
-          className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+          className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400"
         >
           Create
         </button>
@@ -80,38 +85,49 @@ export function Squads() {
           placeholder="Search squads by name"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-zinc-800/80 bg-[#121214] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
         />
         <button
           type="submit"
-          className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
+          className="flex items-center gap-2 rounded-full border border-zinc-800/80 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5"
         >
+          <Icon icon={Search} className="h-4 w-4" />
           Search
         </button>
       </form>
 
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-      {!squads && !error && <p className="text-gray-500">Loading...</p>}
-      {squads && squads.length === 0 && <p className="text-gray-500">No squads found.</p>}
+      {error && (
+        <p className="mb-2 rounded-lg border-l-4 border-red-500 bg-red-500/10 p-3 text-sm font-medium text-red-500">
+          {error}
+        </p>
+      )}
+      {!squads && !error && (
+        <div className="flex h-32 items-center justify-center rounded-2xl border border-zinc-800/60 bg-[#121214]">
+          <p className="animate-pulse text-xs font-bold uppercase tracking-widest text-orange-500">
+            Loading Squads...
+          </p>
+        </div>
+      )}
+      {squads && squads.length === 0 && <p className="text-zinc-400">No squads found.</p>}
 
       <ul className="flex flex-col gap-2">
         {squads?.map((squad) => (
           <li
             key={squad.id}
-            className="flex items-center justify-between rounded border border-gray-200 p-3"
+            className="flex items-center justify-between rounded-2xl border border-zinc-800/60 bg-[#121214] p-4 shadow-xl"
           >
             <div>
               {squad.isCurrentUserMember ? (
                 <Link
                   to={`/squads/${squad.id}`}
-                  className="font-medium text-blue-600 hover:underline"
+                  className="font-bold text-orange-500 hover:text-orange-400"
                 >
                   {squad.name}
                 </Link>
               ) : (
-                <p className="font-medium text-gray-900">{squad.name}</p>
+                <p className="font-bold text-white">{squad.name}</p>
               )}
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-zinc-400">
                 {squad.memberCount} members
                 {squad.currentUserRole ? ` · ${squad.currentUserRole}` : ""}
               </p>
@@ -120,10 +136,10 @@ export function Squads() {
               type="button"
               disabled={busyId === squad.id}
               onClick={() => void handleToggleMembership(squad)}
-              className={`rounded px-3 py-2 text-sm text-white disabled:opacity-50 ${
+              className={`rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
                 squad.isCurrentUserMember
-                  ? "bg-gray-500 hover:bg-gray-600"
-                  : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-red-500/15 text-red-500 hover:bg-red-500 hover:text-white"
+                  : "bg-orange-500 text-black hover:bg-orange-400"
               }`}
             >
               {squad.isCurrentUserMember ? "Leave" : "Join"}

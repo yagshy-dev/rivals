@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, ArrowUpCircle, Search, UserPlus } from "lucide-react";
 import { getSquadMembers, inviteToSquad, promoteMember } from "../api/squads";
 import { searchUsers } from "../api/users";
 import { isApiError, useAuth } from "../api/auth";
+import { Icon } from "../components/Icon";
 import type { SquadMemberResponse, UserSummaryResponse } from "../types";
 
 export function SquadDetail() {
@@ -76,31 +78,48 @@ export function SquadDetail() {
 
   return (
     <div>
-      <Link to="/squads" className="mb-4 inline-block text-sm text-blue-600 hover:underline">
-        ← Back to Squads
+      <Link
+        to="/squads"
+        className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-orange-500 hover:text-orange-400"
+      >
+        <Icon icon={ArrowLeft} className="h-4 w-4" />
+        Back to Squads
       </Link>
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">Squad Members</h1>
+      <h1 className="mb-5 text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+        Squad Members
+      </h1>
 
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-      {!members && !error && <p className="text-gray-500">Loading...</p>}
+      {error && (
+        <p className="mb-2 rounded-lg border-l-4 border-red-500 bg-red-500/10 p-3 text-sm font-medium text-red-500">
+          {error}
+        </p>
+      )}
+      {!members && !error && (
+        <div className="flex h-32 items-center justify-center rounded-2xl border border-zinc-800/60 bg-[#121214]">
+          <p className="animate-pulse text-xs font-bold uppercase tracking-widest text-orange-500">
+            Loading Members...
+          </p>
+        </div>
+      )}
 
       <ul className="mb-6 flex flex-col gap-2">
         {members?.map((member) => (
           <li
             key={member.userId}
-            className="flex items-center justify-between rounded border border-gray-200 p-3"
+            className="flex items-center justify-between rounded-2xl border border-zinc-800/60 bg-[#121214] p-4 shadow-xl"
           >
             <div>
-              <p className="font-medium text-gray-900">{member.displayName}</p>
-              <p className="text-sm text-gray-500">{member.role}</p>
+              <p className="font-bold text-white">{member.displayName}</p>
+              <p className="text-sm text-zinc-400">{member.role}</p>
             </div>
             {isManager && member.role === "MEMBER" && (
               <button
                 type="button"
                 disabled={busyUserId === member.userId}
                 onClick={() => void handlePromote(member.userId)}
-                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
               >
+                <Icon icon={ArrowUpCircle} className="h-4 w-4" />
                 Promote to Manager
               </button>
             )}
@@ -110,19 +129,22 @@ export function SquadDetail() {
 
       {isManager && (
         <div>
-          <h2 className="mb-2 text-lg font-semibold text-gray-900">Invite Employee</h2>
+          <h2 className="mb-2 text-lg font-extrabold tracking-tight text-white">
+            Invite Employee
+          </h2>
           <form onSubmit={handleSearchInvitees} className="mb-3 flex gap-2">
             <input
               type="text"
               placeholder="Search employees by name"
               value={inviteQuery}
               onChange={(e) => setInviteQuery(e.target.value)}
-              className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+              className="flex-1 rounded-lg border border-zinc-800/80 bg-[#121214] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
             />
             <button
               type="submit"
-              className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50"
+              className="flex items-center gap-2 rounded-full border border-zinc-800/80 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5"
             >
+              <Icon icon={Search} className="h-4 w-4" />
               Search
             </button>
           </form>
@@ -130,15 +152,16 @@ export function SquadDetail() {
             {inviteResults.map((candidate) => (
               <li
                 key={candidate.id}
-                className="flex items-center justify-between rounded border border-gray-200 p-3"
+                className="flex items-center justify-between rounded-2xl border border-zinc-800/60 bg-[#121214] p-4 shadow-xl"
               >
-                <span className="text-gray-900">{candidate.displayName}</span>
+                <span className="text-white">{candidate.displayName}</span>
                 <button
                   type="button"
                   disabled={inviteBusy}
                   onClick={() => void handleInvite(candidate.id)}
-                  className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
                 >
+                  <Icon icon={UserPlus} className="h-4 w-4" />
                   Invite
                 </button>
               </li>

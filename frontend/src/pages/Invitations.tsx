@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { Check, Mail, X } from "lucide-react";
 import { acceptInvitation, declineInvitation, getMyInvitations } from "../api/invitations";
 import { isApiError } from "../api/auth";
+import { Icon } from "../components/Icon";
+import { InvitationStatusBadge } from "../components/StatusBadge";
 import type { SquadInvitationResponse } from "../types";
 
 export function Invitations() {
@@ -44,39 +47,61 @@ export function Invitations() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">My Invitations</h1>
+      <div className="mb-5 flex items-center gap-3">
+        <Icon icon={Mail} className="h-6 w-6 text-orange-500" />
+        <h1 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+          My Invitations
+        </h1>
+      </div>
 
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-      {!invitations && !error && <p className="text-gray-500">Loading...</p>}
+      {error && (
+        <p className="mb-2 rounded-lg border-l-4 border-red-500 bg-red-500/10 p-3 text-sm font-medium text-red-500">
+          {error}
+        </p>
+      )}
+      {!invitations && !error && (
+        <div className="flex h-32 items-center justify-center rounded-2xl border border-zinc-800/60 bg-[#121214]">
+          <p className="animate-pulse text-xs font-bold uppercase tracking-widest text-orange-500">
+            Loading Invitations...
+          </p>
+        </div>
+      )}
       {invitations && invitations.length === 0 && (
-        <p className="text-gray-500">You have no pending invitations.</p>
+        <p className="text-zinc-400">You have no pending invitations.</p>
       )}
 
       <ul className="flex flex-col gap-2">
         {invitations?.map((invitation) => (
           <li
             key={invitation.id}
-            className="flex items-center justify-between rounded border border-gray-200 p-3"
+            className="flex items-center justify-between rounded-2xl border border-zinc-800/60 bg-[#121214] p-4 shadow-xl"
           >
             <div>
-              <p className="font-medium text-gray-900">{invitation.squadName}</p>
-              <p className="text-sm text-gray-500">Invited by {invitation.invitedByDisplayName}</p>
+              <p className="font-bold text-white">{invitation.squadName}</p>
+              <p className="text-sm text-zinc-400">
+                Invited by {invitation.invitedByDisplayName}
+              </p>
+              <div className="mt-1">
+                <InvitationStatusBadge status={invitation.status} />
+              </div>
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={busyId === invitation.id}
                 onClick={() => void handleAccept(invitation.id)}
-                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-full bg-approved px-4 py-2 text-sm font-semibold text-approved-fg hover:brightness-110 disabled:opacity-50"
               >
+                <Icon icon={Check} className="h-4 w-4" />
                 Accept
               </button>
               <button
                 type="button"
                 disabled={busyId === invitation.id}
                 onClick={() => void handleDecline(invitation.id)}
-                className="rounded bg-gray-500 px-3 py-2 text-sm text-white hover:bg-gray-600 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-full border border-zinc-800/80 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5 disabled:opacity-50"
               >
+                <Icon icon={X} className="h-4 w-4" />
                 Decline
               </button>
             </div>

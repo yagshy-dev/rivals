@@ -25,10 +25,37 @@ new Global/squad toggle). Tasks T001-T047 below are unchanged from the original 
 `[US4]` labels on the Leaderboards phase have been relabeled `[US5]` to match. T048 onward are new,
 covering the addendum.
 
+**2026-09-04 addendum**: spec.md gained a mandatory, cross-cutting "UI/UX Design System" section
+(UX-001–UX-005) — dark theme, left-hand sidebar navigation, a sharp-cornered "Competitive and
+Sporty" aesthetic, Lucide React icons at stroke-width 2.5, and neon status badges. This is a
+presentation-layer retrofit of every already-shipped page, not a new user story, so its tasks
+(T070-T082, Phase 10) are labeled `[UX]` instead of a `[USn]` story tag and are ordered after all
+five user stories.
+
+**2026-09-04 addendum (second, same day)**: spec.md's UX-003 was then directly replaced — from the
+sharp-cornered "Competitive and Sporty" aesthetic above to an Apple/macOS-inspired one (smooth,
+generous rounded corners; subtle, soft borders instead of high-contrast ones). Phase 10's tasks
+are left unchanged as the historical record of what was originally built; the revision's tasks
+(T083-T091, Phase 11) are new and also labeled `[UX]`.
+
+**2026-09-04 addendum (third, same day)**: spec.md gained a new rule, UX-006 "App Layout
+Wrapping" — every page wrapped in a shared `AppLayout` master component (full-viewport flex,
+`Sidebar` pinned left, independently scrollable main content, `#0a0a0b`/`#121214` page/card
+tones). Its tasks (T092-T102, Phase 12) also apply an orange-accented visual refresh matching
+`Sidebar.tsx`/`Leaderboards.tsx`, which had already been hand-styled that way outside a task file.
+Phases 10 and 11 are left unchanged as the historical record.
+
+**2026-09-04 addendum (fourth, same day)**: spec.md gained a new **User Story 6 - Register a New
+Account** (P1) — a public registration page/endpoint that creates a standard-role account with a
+securely hashed password and redirects to login. Unlike the UI/UX addenda above, this is a genuine
+new user story spanning both backend and frontend, so its tasks (T103-T112, Phase 13) are labeled
+`[US6]` rather than `[UX]`.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1, US2, US3, US4, US5)
+- **[Story]**: Which user story this task belongs to (US1, US2, US3, US4, US5, US6), or `UX` for
+  cross-cutting UI/UX Design System work (Phases 10-12, applying to all stories' pages)
 - File paths are relative to the repository root
 
 ## Path Conventions
@@ -401,6 +428,7 @@ the individual ranking restricted to that squad's members, per spec.md's US5 Ind
 
 - [X] T044 [P] Add navigation links between all pages (Submit, My Submissions, Admin Review
       Queue, Squads, Leaderboards) in `frontend/src/App.tsx` — done as part of T016's `NavBar`
+      (superseded 2026-09-04: `NavBar` was replaced by the `Sidebar` component in Phase 10/T074)
 - [X] T045 [P] Audit all Java DTOs for entity leakage and confirm `frontend/tsconfig.json` strict
       mode has zero violations (Constitution Principle II) across `backend/src/main/java/com/rivals/**/dto/`
       and `frontend/src/**/*.tsx` — grep confirms every controller returns only DTOs/`ResponseEntity`/
@@ -436,6 +464,295 @@ the individual ranking restricted to that squad's members, per spec.md's US5 Ind
 
 ---
 
+## Phase 10: UI/UX Design System Retrofit (addendum, 2026-09-04)
+
+**Goal**: Bring every existing page and shared component into compliance with spec.md's mandatory
+UI/UX Design System (UX-001–UX-005): dark theme, left-hand sidebar navigation, a sharp-cornered
+"Competitive and Sporty" aesthetic, Lucide React icons at stroke-width 2.5, and neon status badges.
+
+**Independent Test**: Load every page (Login, Submit Activity, My Submissions, Admin Review Queue,
+Squads, Squad Detail, Invitations, Leaderboards) and confirm: the page background is `zinc-950`
+and cards are `zinc-900` with white text; navigation is a persistent left sidebar, not a top bar;
+no visible element uses a soft/rounded corner or a low-contrast border; every icon renders at
+stroke-width 2.5; and Approved/Rejected/Pending badges render in electric green/crimson
+red/vivid amber respectively.
+
+### Implementation for the UI/UX Design System Retrofit
+
+- [X] T070 [P] [UX] Add the `lucide-react` dependency in `frontend/package.json` (UX-004) —
+      installed via `npm install lucide-react` (resolved `^1.40.0`)
+- [X] T071 [P] [UX] Configure the mandatory dark theme and sharp-corner design tokens — `zinc-950`/
+      `zinc-900` colors, white text default, and a near-zero `borderRadius` scale (`DEFAULT`/`sm`/
+      `md`/`lg` all `0` or `1px`) — in `frontend/tailwind.config.js`, and set the dark `zinc-950`
+      page background/white text as the base styles in `frontend/src/index.css` (UX-001, UX-003) —
+      also added neon `approved`/`rejected`/`pending` theme colors (UX-005) used by T073
+- [X] T072 [P] [UX] Create a shared icon wrapper that forces every Lucide icon to
+      `strokeWidth={2.5}` (e.g. wrapping `lucide-react`'s `IconContext`/default props, or a local
+      re-export module) in `frontend/src/components/Icon.tsx` (UX-004) (depends on: T070) —
+      implemented as an `<Icon icon={LucideIcon} />` wrapper that applies `strokeWidth={2.5}` after
+      spreading incoming props, so it cannot be silently overridden
+- [X] T073 [P] [UX] Create a shared `StatusBadge` component (`Pending`/`Approved`/`Rejected`) using
+      sharp corners and high-contrast borders per UX-003, with electric-green Approved, crimson-red
+      Rejected, and a third distinct vivid (amber) Pending color per UX-005, in
+      `frontend/src/components/StatusBadge.tsx` — implemented as a shared tone-based `Badge` with
+      two typed wrappers, `StatusBadge` (`SubmissionStatus`) and `InvitationStatusBadge`
+      (`InvitationStatus`), reused by T076 and T079 respectively
+- [X] T074 [UX] Replace the top `NavBar` with a persistent left-hand `Sidebar` component (dark
+      `zinc-900` surface, sharp corners, high-contrast border, active-link highlighting, a Lucide
+      icon per nav item via the T072 wrapper) covering Submit Activity, My Submissions, Squads,
+      Invitations, Leaderboards, and (for admins) Admin Review Queue, in
+      `frontend/src/components/Sidebar.tsx` (new file, `frontend/src/components/NavBar.tsx`
+      removed) (UX-002) (depends on: T071, T072)
+- [X] T075 [UX] Update the app shell to render `Sidebar` in a fixed left column against a
+      `zinc-950` page background, removing the old top-nav layout, in `frontend/src/App.tsx`
+      (UX-001, UX-002) (depends on: T074) — added a `Layout` wrapper that hides the sidebar only
+      on `/login` (no authenticated user yet)
+- [X] T076 [P] [UX] Restyle `SubmitActivity.tsx` and `MySubmissions.tsx` to the dark theme and
+      sharp-cornered aesthetic, replacing any ad hoc status text with `StatusBadge`
+      (UX-001, UX-003, UX-005) in `frontend/src/pages/SubmitActivity.tsx` and
+      `MySubmissions.tsx` (depends on: T071, T073)
+- [X] T077 [P] [UX] Restyle `AdminReviewQueue.tsx` to the dark theme and sharp-cornered aesthetic,
+      using `StatusBadge` and Lucide icons (via T072) for Approve/Reject actions
+      (UX-001, UX-003, UX-004, UX-005) in `frontend/src/pages/AdminReviewQueue.tsx`
+      (depends on: T071, T072, T073) — Approve/Reject buttons reuse the `approved`/`rejected`
+      theme colors for visual consistency with the badges
+- [X] T078 [P] [UX] Restyle `Squads.tsx` and `SquadDetail.tsx` to the dark theme and sharp-cornered
+      aesthetic, using Lucide icons (via T072) for search/create/join/invite/promote actions
+      (UX-001, UX-003, UX-004) in `frontend/src/pages/Squads.tsx` and `SquadDetail.tsx`
+      (depends on: T071, T072)
+- [X] T079 [P] [UX] Restyle `Invitations.tsx` to the dark theme and sharp-cornered aesthetic, using
+      `StatusBadge` for Pending/Accepted/Declined (UX-001, UX-003, UX-005) in
+      `frontend/src/pages/Invitations.tsx` (depends on: T071, T073) — uses the `InvitationStatusBadge`
+      variant from T073
+- [X] T080 [P] [UX] Restyle `Leaderboards.tsx` and `Login.tsx` to the dark theme and sharp-cornered
+      aesthetic, including the Global/squad selector control (UX-001, UX-003) in
+      `frontend/src/pages/Leaderboards.tsx` and `Login.tsx` (depends on: T071)
+- [X] T081 [UX] Audit every file under `frontend/src/pages/` and `frontend/src/components/` for
+      leftover light-theme or soft-rounded classes (e.g. `bg-white`, `text-gray-700`,
+      `border-gray-200`, `rounded-lg`, `rounded-full`) and replace them with the zinc dark palette
+      and sharp-corner tokens from T071 (UX-001, UX-003) — grep confirms none remain outside a
+      documented exception (depends on: T075, T076, T077, T078, T079, T080) — also fixed the
+      `ProtectedRoute.tsx` loading-state text color, which the original task list did not call out
+      by filename; `grep -rn "text-gray-\|bg-white\|border-gray-\|bg-gray-\|text-blue-\|bg-blue-\|
+      bg-green-\|bg-red-\|text-red-\|text-green-\|rounded-lg\|rounded-full" frontend/src` returns
+      no matches
+- [X] T082 [UX] Run `npm run typecheck`, `npm run lint`, and `npm run build` in `frontend/`, then
+      manually walk every page (as both a regular user and an admin) confirming dark
+      `zinc-950`/`zinc-900` surfaces with white text, left-hand sidebar navigation, sharp/
+      high-contrast styling throughout, all icons at stroke-width 2.5, and correct neon badge
+      colors for Approved/Rejected/Pending (depends on: T081) — `typecheck`/`lint`/`build` all
+      pass cleanly (lint's 2 warnings are pre-existing and unrelated, in `api/auth.tsx`); verified
+      the unauthenticated `/login` page live in a real browser (dark `zinc-950` background,
+      `zinc-900` sharp-cornered card, sky accent button). **Not verified**: the authenticated
+      Sidebar and the other seven pages were not walked in a live browser, since that requires the
+      Spring Boot backend + a local PostgreSQL instance (with Flyway migrations and seeded
+      accounts) running, which was out of scope to stand up for this presentation-only retrofit;
+      those pages were verified at the source level instead (every one restyled in T076-T080, zero
+      light-theme classes remain per T081's grep, and the app compiles/builds without error)
+
+**Checkpoint**: Every page in the application conforms to the mandatory UI/UX Design System with
+no functional or backend changes. `typecheck`/`lint`/`build` all pass; the unauthenticated `/login`
+page was verified live in a browser. The authenticated pages (behind `Sidebar`/`ProtectedRoute`)
+were verified at the source level only — see T082's note — since exercising them live requires the
+Spring Boot + PostgreSQL backend, which was not started for this retrofit.
+
+---
+
+## Phase 11: UI/UX Aesthetic Revision — Apple/macOS-Inspired (addendum, 2026-09-04)
+
+**Goal**: Revise UX-003 from the sharp-cornered "Competitive and Sporty" aesthetic (built in
+Phase 10) to an Apple/macOS-inspired one: smooth, generous rounded corners (`rounded-2xl` for
+cards/panels, `rounded-full`/`rounded-lg` for buttons and pills) and subtle, soft borders
+(`border-zinc-800` / low-opacity `border-white/10`) instead of high-contrast ones. UX-001, UX-002,
+UX-004, and UX-005 are unchanged.
+
+**Independent Test**: Load every page and confirm: cards/panels/tables have large, visible corner
+rounding and a barely-visible `zinc-800`-toned border (no hard-edged rectangles); every button and
+status badge is a pill (`rounded-full`) or has a generously rounded shape (`rounded-lg`); no
+element uses a heavy/high-contrast border or a sharp corner; the overall feel reads as elegant and
+soft rather than blocky.
+
+### Implementation for the Apple/macOS Aesthetic Revision
+
+- [X] T083 [UX] Remove the near-zero `borderRadius` override from `frontend/tailwind.config.js` so
+      Tailwind's default generous rounding scale applies again (UX-003) — the neon
+      `approved`/`rejected`/`pending` colors from T071 are unchanged
+- [X] T084 [P] [UX] Revise `StatusBadge.tsx` from a bordered rectangular tag to a borderless
+      `rounded-full` pill (UX-003); `Sidebar.tsx`'s panel border softened to `border-zinc-800`
+      (single `border`, not `border-2`) and its active/hover nav-item styling switched from a
+      bordered rectangle to a `rounded-lg` background highlight (depends on: T083)
+- [X] T085 [P] [UX] Revise `Login.tsx` and `SubmitActivity.tsx`/`MySubmissions.tsx` — cards/forms
+      to `rounded-2xl border border-zinc-800` with a soft shadow, inputs to `rounded-lg`, buttons to
+      `rounded-full`, the submissions table wrapped in a `rounded-2xl` clipping container (UX-003)
+      (depends on: T083)
+- [X] T086 [P] [UX] Revise `AdminReviewQueue.tsx` to the same rounded/soft-border treatment
+      (queue-item cards, empty-state panel, screenshot thumbnail, Approve/Reject pill buttons,
+      zoom-modal image) (UX-003) — also fixed a regression introduced by an out-of-band edit to
+      this file: `Check`/`X`/`Loader2`/`Maximize2` were being rendered directly instead of through
+      the `Icon` wrapper, which silently dropped the UX-004 forced `stroke-width: 2.5`; all four
+      now route through `Icon` again (depends on: T083)
+- [X] T087 [P] [UX] Revise `Squads.tsx` and `SquadDetail.tsx` to the rounded/soft-border treatment
+      (list-item cards, inputs, Create/Search/Join/Leave/Invite/Promote buttons) (UX-003)
+      (depends on: T083)
+- [X] T088 [P] [UX] Revise `Invitations.tsx` to the rounded/soft-border treatment (invitation
+      cards, Accept/Decline pill buttons) (UX-003) (depends on: T083)
+- [X] T089 [P] [UX] Revise `Leaderboards.tsx` to the rounded/soft-border treatment (both
+      leaderboard tables wrapped in `rounded-2xl` clipping containers, view/sort selects) (UX-003)
+      (depends on: T083)
+- [X] T090 [UX] Audit every file under `frontend/src/pages/` and `frontend/src/components/` for
+      leftover sharp/high-contrast classes (`border-2`, `border-zinc-700` as a base border color)
+      and confirm none remain outside an intentional, documented exception (depends on: T084-T089)
+      — `grep -rn "border-2\|border-zinc-700" frontend/src --include=*.tsx` returns exactly one
+      match: `AdminReviewQueue.tsx`'s `hover:border-zinc-700` on a queue-item card, a deliberate
+      one-step-darker hover affordance on top of its `border-zinc-800` base border, not a
+      regression to the old high-contrast baseline
+- [X] T091 [UX] Run `npm run typecheck`, `npm run lint`, and `npm run build` in `frontend/`, then
+      verify the unauthenticated `/login` page live in a browser (depends on: T090) — all three
+      pass cleanly (lint's 2 warnings are pre-existing and unrelated); `/login` verified live
+      showing a `rounded-2xl` card, `rounded-lg` inputs, and a `rounded-full` sky-blue button
+      against the soft `zinc-800` border. **Not verified**: the authenticated pages were not
+      walked live, for the same reason recorded on T082 (no local Spring Boot + PostgreSQL
+      backend running for this session) — verified at the source level instead
+
+**Checkpoint**: Every page uses the Apple/macOS-inspired rounded, soft-bordered aesthetic in place
+of the original sharp-cornered one. No functional, DTO, or backend change.
+
+---
+
+## Phase 12: App Layout Wrapping & Leaderboards-Style Visual Refresh (addendum, 2026-09-04)
+
+**Goal**: Add the new UX-006 rule — every page wrapped in a single shared `AppLayout` master
+layout component (full-viewport `flex h-screen`, `Sidebar` pinned left, an independently
+scrollable main content area on the right, `#0a0a0b` page background against `#121214` cards) —
+and bring every other page's visual language in line with `Sidebar.tsx` and `Leaderboards.tsx`,
+which had already been hand-styled (out-of-band, outside a task file) to an orange-accented look
+built on the `#121214`/`#0a0a0b` tones: `font-extrabold tracking-tight` headings paired with an
+orange Lucide icon, `#121214` cards/tables with `border-zinc-800/60`, `rounded-full` pill
+buttons/selects in `orange-500`, uppercase-tracked table headers with `divide-y` rows and a subtle
+hover state, and a `rounded-2xl` boxed `animate-pulse` loading state in orange. UX-001, UX-002,
+UX-003, UX-004, and UX-005 are otherwise unchanged — `orange-500` is a visual refresh of the
+previous `sky-500` accent, not a new design-system rule, and the neon Approved/Rejected/Pending
+badge colors from UX-005 are untouched.
+
+**Independent Test**: Load every page and confirm: the page background is `#0a0a0b` and every
+card/table is `#121214` with a `border-zinc-800/60` border; resizing the window shows the sidebar
+staying pinned to the left edge while only the main content area scrolls; every page heading pairs
+an orange Lucide icon with `font-extrabold tracking-tight` text; every primary button and select is
+an orange `rounded-full` pill; and error messages render as a `border-l-4 border-red-500` banner
+matching `Leaderboards.tsx`.
+
+### Implementation for App Layout Wrapping & the Visual Refresh
+
+- [X] T092 [UX] Extract the layout logic previously inlined as `App.tsx`'s local `Layout`
+      function into a new `frontend/src/components/AppLayout.tsx` — `flex h-screen` container,
+      `#0a0a0b` background, `Sidebar` shown for authenticated non-`/login` routes, and page content
+      rendered in a `flex-1 overflow-y-auto` main area (UX-006)
+- [X] T093 [UX] Update `frontend/src/App.tsx` to render `AppLayout` instead of the removed inline
+      `Layout` function (UX-006) (depends on: T092)
+- [X] T094 [P] [UX] Update `ProtectedRoute.tsx`'s loading state to the orange
+      `animate-pulse`/uppercase-tracking-widest convention used throughout the app
+- [X] T095 [P] [UX] Restyle `Login.tsx` to the `#121214`/`#0a0a0b`/orange-accent/red-500-error
+      convention, with a Trophy icon beside the heading (depends on: T092)
+- [X] T096 [P] [UX] Restyle `SubmitActivity.tsx` to the same convention, with a ClipboardList
+      heading icon (depends on: T092)
+- [X] T097 [P] [UX] Restyle `MySubmissions.tsx`'s table to `Leaderboards.tsx`'s exact table
+      pattern (`text-[11px] uppercase tracking-[0.1em]` headers, `divide-y divide-zinc-800/40`
+      rows, `hover:bg-white/[0.02]`, a boxed orange loading state), with a ListChecks heading icon
+      (depends on: T092)
+- [X] T098 [P] [UX] Restyle `AdminReviewQueue.tsx` to the same card/border/heading/loading/error
+      convention (ShieldCheck heading icon); also re-verified every icon (`Check`/`X`/`Loader2`/
+      `Maximize2`) still routes through the `Icon` wrapper per UX-004 after this pass
+      (depends on: T092)
+- [X] T099 [P] [UX] Restyle `Squads.tsx` (Swords heading icon) and `SquadDetail.tsx` to the same
+      convention (depends on: T092)
+- [X] T100 [P] [UX] Restyle `Invitations.tsx` to the same convention, with a Mail heading icon
+      (depends on: T092)
+- [X] T101 [UX] Audit every file under `frontend/src/pages/` and `frontend/src/components/` for
+      leftover `sky-*` accent classes, flat (non-`/NN`-opacity) `border-zinc-800`, or `bg-zinc-900`/
+      `bg-zinc-950` outside an intentional, documented exception (depends on: T094-T100) —
+      `grep -rn "sky-\|bg-zinc-900\|bg-zinc-950\|border-zinc-800[^/]" frontend/src --include=*.tsx`
+      returns no matches (the `text-rejected`/`bg-rejected` custom-token uses in `StatusBadge.tsx`
+      and `AdminReviewQueue.tsx`'s Reject button are the deliberate exception, since UX-005's
+      crimson red is a semantic pairing with the Rejected/Declined badge, not a leftover)
+- [X] T102 [UX] Run `npm run typecheck`, `npm run lint`, and `npm run build` in `frontend/`, then
+      verify the unauthenticated `/login` page live in a browser (depends on: T101) — all three
+      pass cleanly (lint's 2 warnings are pre-existing and unrelated); `/login` verified live
+      showing the `#0a0a0b`/`#121214` contrast, the orange Trophy-and-heading row, and the orange
+      `rounded-full` button. **Not verified**: the authenticated pages (including the `AppLayout`
+      sidebar-pinning/scroll behavior itself) were not walked live, for the same reason recorded on
+      T082/T091 (no local Spring Boot + PostgreSQL backend running for this session) — verified at
+      the source level instead
+
+**Checkpoint**: Every page is wrapped in `AppLayout` and matches `Sidebar.tsx`/`Leaderboards.tsx`'s
+orange-accented visual language. No functional, DTO, or backend change.
+
+---
+
+## Phase 13: User Story 6 - Register a New Account (Priority: P1) (addendum, 2026-09-04)
+
+**Goal**: A prospective employee can self-register a new account (email, display name, password)
+from a public page reachable without signing in; the account is created with the standard employee
+role and a securely hashed password, and the visitor is redirected to the login page.
+
+**Independent Test**: Submit the registration form with a new email, display name, and an
+8+-character password; confirm a `201` response and a new row in `users` with `role = USER` and a
+BCrypt-hashed (never plaintext) password; confirm the browser navigates to `/login`; confirm a
+second registration attempt with the same email (any letter casing) is rejected `409` with no
+duplicate row created; confirm a sub-8-character password is rejected `400` before any account is
+created.
+
+### Implementation for User Story 6
+
+- [X] T103 [P] [US6] Add the `RegisterRequest` DTO (`@NotBlank`/`@Email` email, `@NotBlank`/
+      `@Size(max=100)` displayName, `@NotBlank`/`@Size(min=8)` password) per FR-036/FR-037 in
+      `backend/src/main/java/com/rivals/user/dto/RegisterRequest.java`
+- [X] T104 [P] [US6] Add `UserService.register(email, displayName, rawPassword)`: reject with
+      `ConflictException` (409) if `UserRepository.findByEmailIgnoreCase` already finds a match
+      (FR-038); otherwise hash the password with the existing `PasswordEncoder` bean and save a new
+      `User` with `Role.USER` (never `ADMIN`) (FR-039, FR-040), in
+      `backend/src/main/java/com/rivals/user/UserService.java` (depends on: T103)
+- [X] T105 [US6] Add `POST /api/auth/register` to `AuthController`, `@Valid`-binding
+      `RegisterRequest` and returning `201 Created` with the new account's `UserResponse` without
+      establishing a session (FR-036, FR-041), in
+      `backend/src/main/java/com/rivals/user/AuthController.java` (depends on: T104)
+- [X] T106 [US6] Permit `/api/auth/register` alongside `/api/auth/login` in the security filter
+      chain so it needs no authentication (FR-036, FR-042), in
+      `backend/src/main/java/com/rivals/config/SecurityConfig.java` (depends on: T105)
+- [X] T107 [P] [US6] Document `POST /api/auth/register` (request/201/400/409 shapes) in
+      `specs/001-core-features/contracts/auth.md`
+- [X] T108 [P] [US6] Add a `RegisterRequest` type and a `register()` API client function
+      (`POST /auth/register`, does not update the auth session) in
+      `frontend/src/types/auth.ts` and `frontend/src/api/auth.tsx`
+- [X] T109 [US6] Build `Register.tsx` — email/display-name/password form, an 8-character
+      client-side password check, an error banner matching `Login.tsx`'s, and a redirect to
+      `/login` on success — reusing `Login.tsx`'s exact card/input/button markup and orange/grey
+      full-screen aesthetic per UX-001/UX-003/UX-006, in `frontend/src/pages/Register.tsx`
+      (depends on: T108)
+- [X] T110 [US6] Wire `/register` into `frontend/src/App.tsx` as a route sibling of `/login`,
+      outside the `AppLayout` route (per UX-006's public-page carve-out); give `Login.tsx` an
+      explicit full-screen (`min-h-screen`, centered) wrapper of its own — since it can no longer
+      rely on being nested inside `AppLayout`'s padding now that it's a sibling route — and add a
+      "Register"/"Log in" cross-link between the two pages (depends on: T109)
+- [X] T111 [US6] Fix a pre-existing `noUnusedLocals` typecheck failure in
+      `frontend/src/components/AppLayout.tsx` (`ReactNode`, `useAuth`, `useLocation` were left over
+      from an earlier out-of-band edit that switched this component to the `<Outlet/>` nested-route
+      pattern but never removed its now-dead imports) — blocked `tsc --noEmit`/`npm run build`
+      entirely regardless of this feature, so it had to be fixed before T112 could pass
+- [X] T112 [US6] Run `mvn -o clean compile` in `backend/` and `npm run typecheck`/`npm run lint`/
+      `npm run build` in `frontend/`, then verify `/register` live in a browser (depends on: T106,
+      T110, T111) — backend compiles all 57 source files with zero errors; frontend typecheck/build
+      are clean (lint's 3 warnings — one new, for the added `register` export — are the same
+      pre-existing `react-refresh/only-export-components` category as before, not new errors);
+      `/register` verified live in a browser rendering the same card/orange-pill/full-screen
+      aesthetic as `/login`. **Not verified**: an actual end-to-end registration round-trip against
+      the live backend, since that requires a local PostgreSQL instance with Flyway migrations
+      applied, which was not stood up for this session (same limitation noted on T082/T091/T102)
+
+**Checkpoint**: A prospective employee can create an account from a public `/register` page and be
+redirected to `/login`, without needing a pre-provisioned seed account.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -458,11 +775,29 @@ the individual ranking restricted to that squad's members, per spec.md's US5 Ind
   squad memberships, not the Manager/Member role distinction, so it can be built in parallel with
   Phase 7.
 - **Polish (Phase 9)**: Depends on all desired user stories being complete.
+- **UI/UX Design System Retrofit (Phase 10, addendum)**: Design-tokens work (T070-T073: dependency,
+  Tailwind tokens, icon wrapper, badge component) has no dependency on any user story and can start
+  at any time. Per-page restyling (T076-T080) depends on that page already existing (i.e., on
+  whichever story built it) plus T071-T073. The sidebar (T074-T075) depends only on T071-T072, not
+  on any specific story's pages. Ordered last here so it is a single retrofit pass over all
+  already-shipped pages rather than being redone per story, but it carries no new functional
+  requirements and does not block or get blocked by Phase 9's Polish tasks.
+- **User Story 6 (Phase 13, addendum)**: Depends on Foundational only (`PasswordEncoder`,
+  `UserRepository`, and the `/login` route already exist from T010/T009/T017) — fully independent
+  of US1-US5 and of Phases 10-12's presentation work, since it adds a new public route and a new
+  auth endpoint rather than touching any existing page's business logic. Could have been built in
+  parallel with any other phase; it was simply added last here because it was specified last.
 
 ### Within Each User Story
 
 - Mock fixture → UI against mock (Constitution Principle I) → backend entity/DTOs → backend
-  endpoint(s) → wire UI to live endpoint, remove mock.
+  endpoint(s) → wire UI to live endpoint, remove mock. **Exception**: User Story 6 (Phase 13) was
+  implemented directly against the live endpoint with no mock-fixture step — both the backend
+  endpoint and the frontend page were built together in one pass rather than handed off between a
+  frontend-first and a backend-later step, and the endpoint's contract (three string fields in,
+  `201`/`400`/`409` out) was simple enough that a throwaway mock would have added a file to delete
+  immediately after, not genuine UI-first decoupling. This is a deliberate, narrow exception, not a
+  precedent for skipping Principle I on future stories.
 
 ### Parallel Opportunities
 
@@ -478,6 +813,17 @@ the individual ranking restricted to that squad's members, per spec.md's US5 Ind
   `leaderboard`) and different new frontend pages (`SquadDetail.tsx`/`Invitations.tsx` vs.
   `Leaderboards.tsx`). Within Phase 7, T049 and T050 run in parallel (different new files); T054
   and T056 run in parallel (different controllers).
+- **Addendum (Phase 10, UI/UX Design System)**: T070-T073 run in parallel (different files: a
+  dependency bump, `tailwind.config.js`/`index.css`, a new `Icon.tsx`, a new `StatusBadge.tsx`).
+  Once those land, T076-T080 (the five page-restyling tasks, each touching different page files)
+  all run in parallel with each other and with T074-T075 (the sidebar). T081 and T082 are
+  sequential cleanup/verification passes over the whole frontend and must run last.
+- **Addendum (Phase 13, User Story 6)**: T103 (DTO), T104 (service method, depends on T103), and
+  T107 (contract doc, independent) touch different files and can be split across a backend
+  developer and a doc update in parallel; T108 (frontend types/API client) has no dependency on
+  the backend tasks and can start immediately. T105-T106 (controller, security config) and
+  T109-T110 (Register page, App.tsx routing) are each sequential within their own side. T111 (the
+  unrelated `AppLayout.tsx` typecheck fix) can happen any time before T112.
 
 ---
 
@@ -524,6 +870,12 @@ Task: "Create mock JSON fixtures for squad-members, invitations, and users in fr
 5. **Addendum**: US4 (Phase 7) and US5's Leaderboard Toggle (Phase 8) → validate independently →
    demo (group-scoped roles/invitations, and the Global/squad leaderboard selector).
 6. Polish pass (Phase 9) once all five stories are in.
+7. **Addendum**: UI/UX Design System Retrofit (Phase 10) once every page exists — validate against
+   the Phase 10 Independent Test (dark theme, sidebar, sharp corners, stroke-width 2.5 icons, neon
+   badges on every page).
+8. **Addendum**: User Story 6 (Phase 13) at any point after Foundational — validate against its own
+   Independent Test (register → 201 → redirected to `/login`; duplicate email → 409; short
+   password → 400).
 
 ### Addendum MVP (Group-Scoped Roles and Leaderboard Toggling)
 
@@ -553,3 +905,63 @@ stories:
 - **2026-09-03 addendum**: T048-T069 were generated after spec.md/plan.md were updated with
   Group-Scoped Roles and Leaderboard Toggling. T001-T047 are unchanged except for relabeling the
   Leaderboards phase from `[US4]`/P4 to `[US5]`/P3 to match the renumbered spec.md.
+- **2026-09-04 addendum**: T070-T082 (Phase 10) were generated after spec.md gained the mandatory
+  UI/UX Design System section (UX-001–UX-005). These are pure presentation-layer retrofit tasks —
+  no functional requirement, DTO, endpoint, or entity introduced elsewhere in this file changes.
+  All prior tasks (T001-T069) remain exactly as implemented and untouched by this retrofit.
+  T070-T082 are now complete: `lucide-react` added; dark/sharp-corner/neon Tailwind tokens
+  configured; `Icon` and `StatusBadge`/`InvitationStatusBadge` shared components added;
+  `NavBar` replaced by `Sidebar`; every page restyled; a full grep sweep found zero remaining
+  light-theme classes; `typecheck`/`lint`/`build` pass. The authenticated pages were verified at
+  the source level rather than live in a browser, since that requires standing up the Spring Boot
+  + PostgreSQL backend (see T082's note) — only the unauthenticated `/login` page was verified
+  live.
+- **2026-09-04 addendum (second, same day)**: T083-T091 (Phase 11) were generated after spec.md's
+  UX-003 was directly replaced — from the sharp-cornered "Competitive and Sporty" aesthetic
+  (Phase 10) to an Apple/macOS-inspired one (smooth, generous rounded corners; subtle, soft
+  borders). UX-001/UX-002/UX-004/UX-005 and every functional requirement/DTO/endpoint are
+  unchanged. Phase 10's tasks (T070-T082) are left as-is in the historical record — they
+  accurately describe what was built at the time — rather than rewritten, per the "add a new
+  phase, don't rewrite history" pattern already used for the 2026-09-03 addendum. T083-T091 are
+  now complete: the sharp-corner Tailwind override removed, `StatusBadge`/`Sidebar`/every page
+  revised to generous rounding and soft `zinc-800`/`white-10` borders, a stroke-width-2.5
+  regression in `AdminReviewQueue.tsx` (introduced by an out-of-band edit that added a zoom-modal
+  feature) fixed along the way, and `typecheck`/`lint`/`build` all pass. As with Phase 10, only
+  the unauthenticated `/login` page was verified live in a browser.
+- **2026-09-04 addendum (third, same day)**: T092-T102 (Phase 12) were generated after spec.md
+  gained UX-006, "App Layout Wrapping" — a shared `AppLayout` master component (full-viewport flex,
+  `Sidebar` pinned left, independently scrollable main content, `#0a0a0b`/`#121214` page/card
+  tones). By this point `Sidebar.tsx` and `Leaderboards.tsx` had already been hand-edited
+  out-of-band to an orange-accented `#121214`-card visual language (a mobile hamburger/slide-out
+  sidebar; emoji-flavored leaderboard labels; `divide-y`/`hover:bg-white/[0.02]` tables), so Phase
+  12 also propagated that same language to every other page for visual consistency, treating
+  `Leaderboards.tsx` as the reference rather than reverting it. Phases 10 and 11 are left as-is in
+  the historical record. T092-T102 are now complete: `AppLayout.tsx` extracted from `App.tsx`'s
+  former inline `Layout` function; every page restyled to the `#0a0a0b`/`#121214`/orange-500
+  convention with a heading icon; a full grep sweep found zero leftover `sky-*`/flat-`zinc-800`/
+  `zinc-900`/`zinc-950` classes outside the deliberate `rejected`-token exception (UX-005's
+  Rejected/Declined badge color, intentionally paired with the Reject button); and
+  `typecheck`/`lint`/`build` all pass. As with Phases 10-11, only the unauthenticated `/login` page
+  was verified live in a browser — including the `AppLayout` sidebar-pinning/scroll behavior on the
+  authenticated pages, which was verified at the source level only.
+- **2026-09-04 addendum (fourth, same day)**: T103-T112 (Phase 13) were generated after spec.md
+  gained **User Story 6 - Register a New Account** (FR-036–FR-042, SC-011–SC-013) — the first new
+  functional user story since the 2026-09-03 addendum, rather than another UI/UX-only change.
+  Unlike Phases 10-12, this spans both `backend/` and `frontend/`. It reused existing
+  infrastructure rather than adding anything new: the `PasswordEncoder` bean, `ConflictException`
+  → 409 mapping, and `UserRepository.findByEmailIgnoreCase` all already existed from prior work
+  and needed no changes. T103-T112 are now complete: `RegisterRequest` DTO;
+  `UserService.register`; `POST /api/auth/register` (permitted alongside `/login` in
+  `SecurityConfig`); `contracts/auth.md` updated; frontend `RegisterRequest` type +
+  `register()` API client function; `Register.tsx` built from `Login.tsx`'s exact markup;
+  `/register` wired as a sibling of `/login` outside `AppLayout` in `App.tsx`; `Login.tsx` given
+  its own explicit full-screen wrapper (it can no longer rely on `AppLayout`'s padding now that
+  `/login` is a route sibling, not a child); and a pre-existing `noUnusedLocals` typecheck failure
+  in `AppLayout.tsx` (dead imports left over from Phase 12's out-of-band `<Outlet/>` refactor) was
+  fixed since it blocked `tsc`/the build entirely. `mvn -o clean compile` passes (57 source files,
+  zero errors) and frontend `typecheck`/`lint`/`build` all pass. `/register` was verified live in a
+  browser rendering identically to `/login`. **Not verified**: an actual end-to-end registration
+  round-trip against the live backend (creating a real row, confirming the 409 on a duplicate,
+  logging in with the new credentials afterward), since that requires a local PostgreSQL instance
+  with Flyway migrations applied — not stood up for this session, the same limitation noted on
+  every prior phase's verification step.

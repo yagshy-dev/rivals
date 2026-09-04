@@ -1,8 +1,9 @@
 import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 import { AuthProvider } from "./api/auth";
-import { NavBar } from "./components/NavBar";
+import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
 import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
 import { SubmitActivity } from "./pages/SubmitActivity";
 import { MySubmissions } from "./pages/MySubmissions";
 import { AdminReviewQueue } from "./pages/AdminReviewQueue";
@@ -15,10 +16,15 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <NavBar />
-        <main className="mx-auto max-w-4xl p-4">
-          <Routes>
-            <Route path="/login" element={<Login />} />
+        <Routes>
+          {/* 1. PUBLIC ROUTES: No Sidebar, No Layout */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* 2. LAYOUT ROUTE: Everything inside here gets the Sidebar */}
+          <Route element={<AppLayout />}>
+            
+            {/* Standard User Pages */}
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Navigate to="/submit" replace />} />
               <Route path="/submit" element={<SubmitActivity />} />
@@ -28,11 +34,14 @@ export function App() {
               <Route path="/invitations" element={<Invitations />} />
               <Route path="/leaderboards" element={<Leaderboards />} />
             </Route>
+
+            {/* Admin Pages */}
             <Route element={<AdminRoute />}>
               <Route path="/admin/queue" element={<AdminReviewQueue />} />
             </Route>
-          </Routes>
-        </main>
+
+          </Route>
+        </Routes>
       </AuthProvider>
     </BrowserRouter>
   );
